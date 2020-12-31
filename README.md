@@ -10,12 +10,12 @@ Run in Python3.8
 
 Windows 10
 ```
-py -m api
+py -m Serveur.api
 ```
 
 Linux system
 ```
-python3.8 -m api
+python3.8 -m Serveur.api
 ```
 
 #### Run sensor manager in local environment
@@ -23,10 +23,10 @@ python3.8 -m api
 
 Windows 10
 ```
-py -m sensor_manager
+py -m Serveur.sensor_manager
 ```
 
 Linux system
 ```
-python3.8 -m sensor_manager
+python3.8 -m Serveur.sensor_manager
 ```

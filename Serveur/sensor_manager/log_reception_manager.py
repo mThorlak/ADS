@@ -1,7 +1,7 @@
 import os
 import shutil as su
 import pandas as pd
-from sensor_manager import SensorLogFileModel as slfm, ARCHIVE_LOG_PATH, ACTUAL_DIRECTORY
+from Serveur.sensor_manager import SensorLogFileModel as slfm, ARCHIVE_LOG_PATH, ACTUAL_DIRECTORY
 
 
 # Step 1 : get path of the csv file

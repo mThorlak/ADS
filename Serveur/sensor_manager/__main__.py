@@ -1,4 +1,4 @@
-from sensor_manager import log_reception_manager
+from Serveur.sensor_manager import log_reception_manager
 
 
 def main():
