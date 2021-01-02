@@ -48,4 +48,5 @@ def insertIntoBigDataLogFile(logFileModel):
 
 
 def run():
-    runLogReceptionManager(ACTUAL_DIRECTORY + '/reception_log/test2__10-12-2020.csv')
+    # Example
+    runLogReceptionManager(ACTUAL_DIRECTORY + '/reception_log/test2__13-12-2020.csv')
