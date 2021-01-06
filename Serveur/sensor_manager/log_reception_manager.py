@@ -14,18 +14,25 @@ def runLogReceptionManager(pathFile):
     # Step 1 and 2
     logFileModel = slfm.SensorLogFileModel(pathFile)
     # Step 3
-    archiveLogFile(logFileModel.pathFile, logFileModel.fileName, logFileModel.dateLog)
+    logToAnalyse = archiveLogFile(logFileModel.pathFile, logFileModel.fileName, logFileModel.dateLog)
+    # TODO
+    # Step 4
+
     # Step 5
     insertIntoBigDataLogFile(logFileModel)
 
 
 # Archive log file send by sensor in archive log directory sort by day
 def archiveLogFile(pathFileToCopy, newFileName, dateLog):
+    newPathFileRegistered = ARCHIVE_LOG_PATH + '/' + dateLog + '/' + newFileName
     try:
         os.mkdir(ARCHIVE_LOG_PATH + '/' + dateLog)
-        su.copy(pathFileToCopy, ARCHIVE_LOG_PATH + '/' + dateLog + '/' + newFileName)
-    except Exception as err:
-        su.copy(pathFileToCopy, ARCHIVE_LOG_PATH + '/' + dateLog + '/' + newFileName)
+        su.copy(pathFileToCopy, newPathFileRegistered)
+        return newPathFileRegistered
+
+    except Exception:
+        su.copy(pathFileToCopy, newPathFileRegistered)
+        return newPathFileRegistered
 
 
 def insertIntoBigDataLogFile(logFileModel):

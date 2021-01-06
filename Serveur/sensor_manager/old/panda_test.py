@@ -20,7 +20,7 @@ def sortByBluetoothMacAddress(pathfile, bluetoothAdress):
     log_file = pd.read_csv(pathfile, sep=';')
     result = log_file.loc[log_file['Mac address'] == bluetoothAdress]
 
-#read_csv(const.TEST_BLUETOOTH_PATH)
+# read_csv(const.TEST_BLUETOOTH_PATH)
 sortByName(const.TEST_BLUETOOTH_PATH, 'Wylie Chapman')
 sortByDate(const.TEST_BLUETOOTH_PATH, '2020-11-02T08:55:33-08:00')
 sortByBluetoothMacAddress(const.TEST_BLUETOOTH_PATH, 'A9:B5:G7:E5:L1')

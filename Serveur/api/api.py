@@ -35,7 +35,7 @@ def allDataDay(date):
             pathFile = ARCHIVE_LOG_PATH + date + '/all_logs.csv'
             try:
                 allLogsFileModel = salfm.SensorAllLogsFileModel(pathFile)
-                result = allLogsFileModel.content.to_json(orient="index")
+                result = allLogsFileModel.content.to_json(orient="table")
                 parsed = json.loads(result)
                 response = make_response(parsed, 200)
                 response.headers["Content-Type"] = "application/json"
@@ -121,4 +121,4 @@ def getDateLogs():
 
 
 def run():
-    app.run()
+    app.run(host='0.0.0.0')
