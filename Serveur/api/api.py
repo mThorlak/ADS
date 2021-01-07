@@ -1,11 +1,14 @@
 import flask
 import json
 import re
+import pandas as pd
 from flask import jsonify, make_response
 from Serveur.sensor_manager import ARCHIVE_LOG_PATH
+from Serveur.rules_manager import CONFIG_SENSORS_PATH
 from Serveur.api import service as service
 from Serveur.sensor_manager import SensorAllLogsFileModel as salfm
 from Serveur.sensor_manager import SensorLogFileModel as slfm
+from Serveur.rules_manager import SensorConfigModel as scm
 
 app = flask.Flask(__name__)
 app.config["DEBUG"] = True
@@ -35,9 +38,8 @@ def allDataDay(date):
             pathFile = ARCHIVE_LOG_PATH + date + '/all_logs.csv'
             try:
                 allLogsFileModel = salfm.SensorAllLogsFileModel(pathFile)
-                result = allLogsFileModel.content.to_json(orient="table")
-                parsed = json.loads(result)
-                response = make_response(parsed, 200)
+                result = allLogsFileModel.content.to_json(orient='table')
+                response = make_response(result, 200)
                 response.headers["Content-Type"] = "application/json"
                 return response
             except Exception:
@@ -73,8 +75,7 @@ def getDataFromSensor(sensor, date):
             try:
                 logFileModel = slfm.SensorLogFileModel(pathFile)
                 result = logFileModel.content.to_json(orient="index")
-                parsed = json.loads(result)
-                response = make_response(parsed, 200)
+                response = make_response(result, 200)
                 response.headers["Content-Type"] = "application/json"
                 return response
             except Exception:
@@ -106,7 +107,7 @@ def allFilesFromASensor(sensor):
             response = make_response(jsonify(listDateLogs), 200)
             response.headers["Content-Type"] = "application/json"
         except Exception:
-            response = make_response(jsonify("Unknown error during searchin all logs from a sensor"), 400)
+            response = make_response(jsonify("Unknown error during searchinf all logs from a sensor"), 400)
             response.headers["Content-Type"] = "application/json"
             return response
         return response
@@ -118,6 +119,51 @@ def getDateLogs():
     response = make_response(jsonify(listDateLogs), 200)
     response.headers["Content-Type"] = "application/json"
     return response
+
+
+# Manage sensors_config.csv
+@app.route('/configSensor', methods=['GET', 'POST', 'DELETE'])
+def configSensor():
+    if flask.request.method == 'GET':
+        try:
+            sensorConfigFile = scm.SensorConfigModel()
+            result = sensorConfigFile.content.to_json()
+            response = make_response(result, 200)
+            response.headers["Content-Type"] = "application/json"
+            return response
+        except Exception:
+            response = make_response(jsonify("Cannot find config sensor file"), 400)
+            response.headers["Content-Type"] = "application/json"
+            return response
+    if flask.request.method == 'POST':
+        try:
+            sensorToAdd = flask.request.get_json()
+            dataFrame = pd.DataFrame(pd.json_normalize(sensorToAdd))
+            dataFrame.to_csv(CONFIG_SENSORS_PATH, mode='a', sep=',', header=False, index=False)
+            sensorConfigFile = scm.SensorConfigModel()
+            result = sensorConfigFile.content.to_json()
+            response = make_response(result, 201)
+            response.headers["Content-Type"] = "application/json"
+            return response
+        except Exception:
+            response = make_response(jsonify("Error during insertion of a new config sensor"), 400)
+            response.headers["Content-Type"] = "application/json"
+            return response
+    if flask.request.method == 'DELETE':
+        try:
+            request = flask.request.get_json()
+            sensorConfigFile = scm.SensorConfigModel()
+            sensorConfigFile.content = sensorConfigFile.content[sensorConfigFile.content.Name != request['Name']]
+            sensorConfigFile.content.to_csv(CONFIG_SENSORS_PATH, index=False)
+            result = sensorConfigFile.content.to_json()
+            parsed = json.loads(result)
+            response = make_response(parsed, 201)
+            response.headers["Content-Type"] = "application/json"
+            return response
+        except Exception:
+            response = make_response(jsonify(Exception), 400)
+            response.headers["Content-Type"] = "application/json"
+            return response
 
 
 def run():
