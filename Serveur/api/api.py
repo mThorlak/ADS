@@ -38,7 +38,7 @@ def allDataDay(date):
             pathFile = ARCHIVE_LOG_PATH + date + '/all_logs.csv'
             try:
                 allLogsFileModel = salfm.SensorAllLogsFileModel(pathFile)
-                result = allLogsFileModel.content.to_json(orient='table')
+                result = allLogsFileModel.content.to_json(orient='records')
                 response = make_response(result, 200)
                 response.headers["Content-Type"] = "application/json"
                 return response
