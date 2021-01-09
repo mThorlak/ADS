@@ -1,14 +1,14 @@
 import flask
-import json
 import re
 import pandas as pd
 from flask import jsonify, make_response
 from Serveur.sensor_manager import ARCHIVE_LOG_PATH
-from Serveur.rules_manager import CONFIG_SENSORS_PATH
+from Serveur.rules_manager import CONFIG_SENSORS_PATH, WHITE_LIST_PATH, BLACK_LIST_PATH
 from Serveur.api import service as service
 from Serveur.sensor_manager import SensorAllLogsFileModel as salfm
 from Serveur.sensor_manager import SensorLogFileModel as slfm
 from Serveur.rules_manager import SensorConfigModel as scm
+from Serveur.rules_manager.list import listModel as bwl
 
 app = flask.Flask(__name__)
 app.config["DEBUG"] = True
@@ -38,7 +38,7 @@ def allDataDay(date):
             pathFile = ARCHIVE_LOG_PATH + date + '/all_logs.csv'
             try:
                 allLogsFileModel = salfm.SensorAllLogsFileModel(pathFile)
-                result = allLogsFileModel.content.to_json(orient='records')
+                result = allLogsFileModel.content.to_json(orient='values')
                 response = make_response(result, 200)
                 response.headers["Content-Type"] = "application/json"
                 return response
@@ -124,40 +124,185 @@ def getDateLogs():
 # Manage sensors_config.csv
 @app.route('/configSensor', methods=['GET', 'POST', 'DELETE'])
 def configSensor():
+    # Get method
     if flask.request.method == 'GET':
         try:
             sensorConfigFile = scm.SensorConfigModel()
-            result = sensorConfigFile.content.to_json()
+            result = sensorConfigFile.content.to_json(orient='values')
             response = make_response(result, 200)
             response.headers["Content-Type"] = "application/json"
             return response
         except Exception:
-            response = make_response(jsonify("Cannot find config sensor file"), 400)
+            response = make_response(jsonify(Exception), 400)
             response.headers["Content-Type"] = "application/json"
             return response
+    # Post method
     if flask.request.method == 'POST':
         try:
             sensorToAdd = flask.request.get_json()
-            dataFrame = pd.DataFrame(pd.json_normalize(sensorToAdd))
+        except Exception:
+            response = make_response(jsonify("Error, bad request"), 400)
+            response.headers["Content-Type"] = "application/json"
+            return response
+        sensorToAdd = {
+            'Name': str(sensorToAdd['Name']).lower(),
+            'Mac_Address': sensorToAdd['Mac_Address'],
+            'Priority': sensorToAdd['Priority']
+        }
+        dataFrame = pd.DataFrame(pd.json_normalize(sensorToAdd))
+        try:
+            open(CONFIG_SENSORS_PATH)
             dataFrame.to_csv(CONFIG_SENSORS_PATH, mode='a', sep=',', header=False, index=False)
             sensorConfigFile = scm.SensorConfigModel()
-            result = sensorConfigFile.content.to_json()
+            result = sensorConfigFile.content.to_json(orient='values')
             response = make_response(result, 201)
             response.headers["Content-Type"] = "application/json"
             return response
+        # Manage case where the file does not exists, so we add headers into the file
         except Exception:
-            response = make_response(jsonify("Error during insertion of a new config sensor"), 400)
+            dataFrame.to_csv(CONFIG_SENSORS_PATH, mode='a', sep=',', header=True, index=False)
+            sensorConfigFile = scm.SensorConfigModel()
+            result = sensorConfigFile.content.to_json(orient='values')
+            response = make_response(result, 201)
             response.headers["Content-Type"] = "application/json"
             return response
+
+    # Delete method
     if flask.request.method == 'DELETE':
         try:
             request = flask.request.get_json()
             sensorConfigFile = scm.SensorConfigModel()
-            sensorConfigFile.content = sensorConfigFile.content[sensorConfigFile.content.Name != request['Name']]
+            sensorConfigFile.content = sensorConfigFile.content[
+                sensorConfigFile.content.Name != str(request['Name']).lower()]
             sensorConfigFile.content.to_csv(CONFIG_SENSORS_PATH, index=False)
-            result = sensorConfigFile.content.to_json()
-            parsed = json.loads(result)
-            response = make_response(parsed, 201)
+            result = sensorConfigFile.content.to_json(orient='values')
+            response = make_response(result, 201)
+            response.headers["Content-Type"] = "application/json"
+            return response
+        except Exception:
+            response = make_response(jsonify(Exception), 400)
+            response.headers["Content-Type"] = "application/json"
+            return response
+
+
+# Manage whiteList.csv
+@app.route('/whiteList', methods=['GET', 'POST', 'DELETE'])
+def whiteList():
+    # Get method
+    if flask.request.method == 'GET':
+        try:
+            whiteListFile = bwl.ListModel()
+            result = whiteListFile.contentWhiteList.to_json(orient='values')
+            response = make_response(result, 200)
+            response.headers["Content-Type"] = "application/json"
+            return response
+        except Exception:
+            response = make_response(jsonify(Exception), 400)
+            response.headers["Content-Type"] = "application/json"
+            return response
+
+    # Post method
+    if flask.request.method == 'POST':
+        try:
+            sensorToAdd = flask.request.get_json()
+        except Exception:
+            response = make_response(jsonify("Error, bad request"), 400)
+            response.headers["Content-Type"] = "application/json"
+            return response
+        sensorToAdd = {
+            'Mac_Address': sensorToAdd['Mac_Address']
+        }
+        dataFrame = pd.DataFrame(pd.json_normalize(sensorToAdd))
+        try:
+            open(WHITE_LIST_PATH)
+            dataFrame.to_csv(WHITE_LIST_PATH, mode='a', sep=',', header=False, index=False)
+            whiteListFile = bwl.ListModel()
+            result = whiteListFile.contentWhiteList.to_json(orient='values')
+            response = make_response(result, 201)
+            response.headers["Content-Type"] = "application/json"
+            return response
+        # Manage case where the file does not exists, so we add headers into the file
+        except Exception:
+            dataFrame.to_csv(WHITE_LIST_PATH, mode='a', sep=',', header=True, index=False)
+            whiteListFile = bwl.ListModel()
+            result = whiteListFile.contentWhiteList.to_json(orient='values')
+            response = make_response(result, 201)
+            response.headers["Content-Type"] = "application/json"
+            return response
+
+    # Delete method
+    if flask.request.method == 'DELETE':
+        try:
+            request = flask.request.get_json()
+            whiteListFile = bwl.ListModel()
+            whiteListFile.contentWhiteList = whiteListFile.contentWhiteList[
+                whiteListFile.contentWhiteList.Mac_Address != str(request['Mac_Address'])]
+            whiteListFile.contentWhiteList.to_csv(WHITE_LIST_PATH, index=False)
+            result = whiteListFile.contentWhiteList.to_json(orient='values')
+            response = make_response(result, 201)
+            response.headers["Content-Type"] = "application/json"
+            return response
+        except Exception:
+            response = make_response(jsonify(Exception), 400)
+            response.headers["Content-Type"] = "application/json"
+            return response
+
+
+# Manage whiteList.csv
+@app.route('/blackList', methods=['GET', 'POST', 'DELETE'])
+def blackList():
+    # Get method
+    if flask.request.method == 'GET':
+        try:
+            blackListFile = bwl.ListModel()
+            result = blackListFile.contentBlackList.to_json(orient='values')
+            response = make_response(result, 200)
+            response.headers["Content-Type"] = "application/json"
+            return response
+        except Exception:
+            response = make_response(jsonify(Exception), 400)
+            response.headers["Content-Type"] = "application/json"
+            return response
+
+    # Post method
+    if flask.request.method == 'POST':
+        try:
+            sensorToAdd = flask.request.get_json()
+        except Exception:
+            response = make_response(jsonify("Error, bad request"), 400)
+            response.headers["Content-Type"] = "application/json"
+            return response
+        sensorToAdd = {
+            'Mac_Address': sensorToAdd['Mac_Address']
+        }
+        dataFrame = pd.DataFrame(pd.json_normalize(sensorToAdd))
+        try:
+            open(BLACK_LIST_PATH)
+            dataFrame.to_csv(BLACK_LIST_PATH, mode='a', sep=',', header=False, index=False)
+            blackListFile = bwl.ListModel()
+            result = blackListFile.contentBlackList.to_json(orient='values')
+            response = make_response(result, 201)
+            response.headers["Content-Type"] = "application/json"
+            return response
+        # Manage case where the file does not exists, so we add headers into the file
+        except Exception:
+            dataFrame.to_csv(BLACK_LIST_PATH, mode='a', sep=',', header=True, index=False)
+            blackListFile = bwl.ListModel()
+            result = blackListFile.contentBlackList.to_json(orient='values')
+            response = make_response(result, 201)
+            response.headers["Content-Type"] = "application/json"
+            return response
+
+    # Delete method
+    if flask.request.method == 'DELETE':
+        try:
+            request = flask.request.get_json()
+            blackListFile = bwl.ListModel()
+            blackListFile.contentBlackList = blackListFile.contentBlackList[
+                blackListFile.contentBlackList.Mac_Address != str(request['Mac_Address'])]
+            blackListFile.contentBlackList.to_csv(BLACK_LIST_PATH, index=False)
+            result = blackListFile.contentBlackList.to_json(orient='values')
+            response = make_response(result, 201)
             response.headers["Content-Type"] = "application/json"
             return response
         except Exception:

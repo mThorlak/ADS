@@ -17,7 +17,7 @@ class SensorLogFileModel:
         self.sensorName = self.fileName.split('__')[0]
         self.dateLog = self.fileName.split('__')[1]
         self.dateLog = self.dateLog.split('.csv')[0]
-        self.content = pd.read_csv(self.pathFile, sep=',')
+        self.content = pd.read_csv(self.pathFile)
 
     def getProperty(self):
         return "{ file path : " + self.pathFile + "; sensor name : " + self.sensorName + \
