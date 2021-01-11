@@ -248,7 +248,7 @@ def whiteList():
             return response
 
 
-# Manage whiteList.csv
+# Manage blacklist.csv
 @app.route('/blackList', methods=['GET', 'POST', 'DELETE'])
 def blackList():
     # Get method
