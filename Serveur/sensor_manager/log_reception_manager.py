@@ -3,6 +3,7 @@ import shutil as su
 import pandas as pd
 from Serveur.sensor_manager import SensorLogFileModel as slfm, ARCHIVE_LOG_PATH, ACTUAL_DIRECTORY
 from Serveur.sensor_manager import BufferFileModel as bfm
+from Serveur.rules_manager import rules as rules
 
 
 # Step 1 : get path of the csv file
@@ -12,23 +13,31 @@ from Serveur.sensor_manager import BufferFileModel as bfm
 # Step 5 : manage the new lines of the file depending of the rules
 # Step 6 : update the buffer
 # Step 7 : register new lines in the 'big log data' file
+# Step 8 : clear the buffer at the end of the day
 
 def runLogReceptionManager(pathFile):
     ### Step 1 and 2 ###
     sensorLogFileReceived = slfm.SensorLogFileModel(pathFile)
     ### Step 3 ###
-    # logToAnalyse = archiveLogFile(sensorLogFileReceived.pathFile, sensorLogFileReceived.fileName, sensorLogFileReceived.dateLog)
-    # TODO
+    logToAnalyse = archiveLogFile(sensorLogFileReceived.pathFile, sensorLogFileReceived.fileName, sensorLogFileReceived.dateLog)
+    logToAnalyse = slfm.SensorLogFileModel(logToAnalyse)
     ### Step 4 ###
-    linesToAnalyzed = getLinesToAnalyzed(sensorLogFileReceived)
-    clearBuffer()
-    ### Step 6 ###
-    # updateBuffer(sensorLogFileReceived)
-    ### Step 7 ###
-    # insertIntoBigDataLogFile(sensorLogFileReceived)
+    linesToAnalyzed = getLinesToAnalyzed(logToAnalyse)
+    print(linesToAnalyzed)
+    if linesToAnalyzed is not None:
+        ### Step 5 ###
+        rules.run(pathFile, linesToAnalyzed)
+        ### Step 6 ###
+        updateBuffer(logToAnalyse)
+        ### Step 7 ###
+        insertIntoBigDataLogFile(logToAnalyse)
+    else:
+        print("Nothing to analyse")
+    ### Step 8 ###
+    # clearBuffer()
 
 
-# Archive log file send by sensor in archive log directory sort by day
+# Archive log file send by sensor in archive log directory sort by day and return the path of the file registered
 def archiveLogFile(pathFileToCopy, newFileName, dateLog):
     newPathFileRegistered = ARCHIVE_LOG_PATH + '/' + dateLog + '/' + newFileName
     try:
@@ -67,7 +76,7 @@ def checkBuffer(logFileModel):
     newContentBuffer = {
         'Name': lastRow['ID'].item().split('-')[0],
         'Date': lastRow['Date'],
-        'LastIndex': lastRow.iloc[[-1]].index.values
+        'LastIndex': lastRow.iloc[[-1]].index.values[0]
     }
     rowInBuffer = bufferFile.content[bufferFile.content['Name'] == newContentBuffer['Name']]
     # If the sensor is not in the buffer file, the first line of the sensor's log file is return
@@ -75,17 +84,26 @@ def checkBuffer(logFileModel):
         return logFileModel.content.iloc[[0]]
     # Else, the line registered in the buffer file
     else:
-        return logFileModel.content[logFileModel.content['Date'] == rowInBuffer['Date'].item()].iloc[0]
+        # Avoid to check line already analysed
+        indexLogFileModel = logFileModel.content[logFileModel.content['Date'] == rowInBuffer['Date'].item()].iloc[[-1]]
+        if newContentBuffer['LastIndex'] == indexLogFileModel.index.values[0]:
+            print("Line already analysed")
+            return None
+        return logFileModel.content[logFileModel.content['Date'] == rowInBuffer['Date'].item()].iloc[[0]]
 
 
 # Return all the new lines that needs to be analyzed
 def getLinesToAnalyzed(logFileModel):
     checkBufferResult = checkBuffer(logFileModel)
-    indexWhereStart = logFileModel.content[logFileModel.content['Date'] == checkBufferResult['Date']]
-    # If more than one values, we take only the first index of the rows
-    indexWhereStart = indexWhereStart.index.values[0]
-    linesToAnalyzed = logFileModel.content.iloc[indexWhereStart: logFileModel.content.index[-1] + 1]
-    return linesToAnalyzed
+    # Case where there is no more lines to analise
+    if checkBufferResult is None:
+        return None
+    else:
+        indexWhereStart = logFileModel.content[logFileModel.content['Date'] == checkBufferResult['Date'].item()]
+        # If more than one values, we take only the first index of the rows
+        indexWhereStart = indexWhereStart.index.values[0]
+        linesToAnalyzed = logFileModel.content.iloc[indexWhereStart + 1: logFileModel.content.index[-1] + 1]
+        return linesToAnalyzed
 
 
 # Update buffer file with the last line of the log file

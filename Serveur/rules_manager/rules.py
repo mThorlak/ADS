@@ -29,6 +29,22 @@ def isInBlackList(mac_address):
     return mac_address in blackList.contentBlackList['Mac_Address'].values
 
 
+# TODO : better management when rules will be improved
+def analyseNewLines(pathFile, linesToAnalyzed):
+    logSensor = slfm.SensorLogFileModel(pathFile)
+    # row [0] = index
+    # row [1] = ID
+    # row [2] = Date
+    # row [3] = Mac_Address
+    for row in linesToAnalyzed.itertuples():
+        if isInBlackList(row[3]):
+            sendAlert()
+        elif isInWhiteList(row[3]):
+            continue
+        else:
+            print("Not in list")
+
+
 # TODO
     # 0 => make a buffer of all the new lines to read
     # 1 => check if the new logs are a priority
@@ -41,8 +57,7 @@ def sendAlert():
     print("Alert sent")
 
 
-def run(pathFile):
+def run(pathFile, linesToAnalyzed):
     if isAPriority(pathFile):
         sendAlert()
-    print(isInWhiteList('Test1'))
-    print(isInBlackList('Test2'))
+    analyseNewLines(pathFile, linesToAnalyzed)
