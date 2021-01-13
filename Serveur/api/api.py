@@ -38,7 +38,7 @@ def allDataDay(date):
             pathFile = ARCHIVE_LOG_PATH + date + '/all_logs.csv'
             try:
                 allLogsFileModel = salfm.SensorAllLogsFileModel(pathFile)
-                result = allLogsFileModel.content.to_json(orient='values')
+                result = allLogsFileModel.content.to_json(orient='records')
                 response = make_response(result, 200)
                 response.headers["Content-Type"] = "application/json"
                 return response
@@ -74,7 +74,7 @@ def getDataFromSensor(sensor, date):
         if flask.request.method == 'GET':
             try:
                 logFileModel = slfm.SensorLogFileModel(pathFile)
-                result = logFileModel.content.to_json(orient="index")
+                result = logFileModel.content.to_json(orient='records')
                 response = make_response(result, 200)
                 response.headers["Content-Type"] = "application/json"
                 return response
@@ -128,7 +128,7 @@ def configSensor():
     if flask.request.method == 'GET':
         try:
             sensorConfigFile = scm.SensorConfigModel()
-            result = sensorConfigFile.content.to_json(orient='values')
+            result = sensorConfigFile.content.to_json(orient='records')
             response = make_response(result, 200)
             response.headers["Content-Type"] = "application/json"
             return response
@@ -154,7 +154,7 @@ def configSensor():
             open(CONFIG_SENSORS_PATH)
             dataFrame.to_csv(CONFIG_SENSORS_PATH, mode='a', sep=',', header=False, index=False)
             sensorConfigFile = scm.SensorConfigModel()
-            result = sensorConfigFile.content.to_json(orient='values')
+            result = sensorConfigFile.content.to_json(orient='records')
             response = make_response(result, 201)
             response.headers["Content-Type"] = "application/json"
             return response
@@ -162,7 +162,7 @@ def configSensor():
         except Exception:
             dataFrame.to_csv(CONFIG_SENSORS_PATH, mode='a', sep=',', header=True, index=False)
             sensorConfigFile = scm.SensorConfigModel()
-            result = sensorConfigFile.content.to_json(orient='values')
+            result = sensorConfigFile.content.to_json(orient='records')
             response = make_response(result, 201)
             response.headers["Content-Type"] = "application/json"
             return response
@@ -175,7 +175,7 @@ def configSensor():
             sensorConfigFile.content = sensorConfigFile.content[
                 sensorConfigFile.content.Name != str(request['Name']).lower()]
             sensorConfigFile.content.to_csv(CONFIG_SENSORS_PATH, index=False)
-            result = sensorConfigFile.content.to_json(orient='values')
+            result = sensorConfigFile.content.to_json(orient='records')
             response = make_response(result, 201)
             response.headers["Content-Type"] = "application/json"
             return response
@@ -192,7 +192,7 @@ def whiteList():
     if flask.request.method == 'GET':
         try:
             whiteListFile = bwl.ListModel()
-            result = whiteListFile.contentWhiteList.to_json(orient='values')
+            result = whiteListFile.contentWhiteList.to_json(orient='records')
             response = make_response(result, 200)
             response.headers["Content-Type"] = "application/json"
             return response
@@ -217,7 +217,7 @@ def whiteList():
             open(WHITE_LIST_PATH)
             dataFrame.to_csv(WHITE_LIST_PATH, mode='a', sep=',', header=False, index=False)
             whiteListFile = bwl.ListModel()
-            result = whiteListFile.contentWhiteList.to_json(orient='values')
+            result = whiteListFile.contentWhiteList.to_json(orient='records')
             response = make_response(result, 201)
             response.headers["Content-Type"] = "application/json"
             return response
@@ -225,7 +225,7 @@ def whiteList():
         except Exception:
             dataFrame.to_csv(WHITE_LIST_PATH, mode='a', sep=',', header=True, index=False)
             whiteListFile = bwl.ListModel()
-            result = whiteListFile.contentWhiteList.to_json(orient='values')
+            result = whiteListFile.contentWhiteList.to_json(orient='records')
             response = make_response(result, 201)
             response.headers["Content-Type"] = "application/json"
             return response
@@ -238,7 +238,7 @@ def whiteList():
             whiteListFile.contentWhiteList = whiteListFile.contentWhiteList[
                 whiteListFile.contentWhiteList.Mac_Address != str(request['Mac_Address'])]
             whiteListFile.contentWhiteList.to_csv(WHITE_LIST_PATH, index=False)
-            result = whiteListFile.contentWhiteList.to_json(orient='values')
+            result = whiteListFile.contentWhiteList.to_json(orient='records')
             response = make_response(result, 201)
             response.headers["Content-Type"] = "application/json"
             return response
@@ -255,7 +255,7 @@ def blackList():
     if flask.request.method == 'GET':
         try:
             blackListFile = bwl.ListModel()
-            result = blackListFile.contentBlackList.to_json(orient='values')
+            result = blackListFile.contentBlackList.to_json(orient='records')
             response = make_response(result, 200)
             response.headers["Content-Type"] = "application/json"
             return response
@@ -280,7 +280,7 @@ def blackList():
             open(BLACK_LIST_PATH)
             dataFrame.to_csv(BLACK_LIST_PATH, mode='a', sep=',', header=False, index=False)
             blackListFile = bwl.ListModel()
-            result = blackListFile.contentBlackList.to_json(orient='values')
+            result = blackListFile.contentBlackList.to_json(orient='records')
             response = make_response(result, 201)
             response.headers["Content-Type"] = "application/json"
             return response
@@ -288,7 +288,7 @@ def blackList():
         except Exception:
             dataFrame.to_csv(BLACK_LIST_PATH, mode='a', sep=',', header=True, index=False)
             blackListFile = bwl.ListModel()
-            result = blackListFile.contentBlackList.to_json(orient='values')
+            result = blackListFile.contentBlackList.to_json(orient='records')
             response = make_response(result, 201)
             response.headers["Content-Type"] = "application/json"
             return response
@@ -301,7 +301,7 @@ def blackList():
             blackListFile.contentBlackList = blackListFile.contentBlackList[
                 blackListFile.contentBlackList.Mac_Address != str(request['Mac_Address'])]
             blackListFile.contentBlackList.to_csv(BLACK_LIST_PATH, index=False)
-            result = blackListFile.contentBlackList.to_json(orient='values')
+            result = blackListFile.contentBlackList.to_json(orient='records')
             response = make_response(result, 201)
             response.headers["Content-Type"] = "application/json"
             return response
