@@ -14,7 +14,6 @@ class SensorConfigModel:
         self.pathFile = CONFIG_SENSORS_PATH
         self.fileName = os.path.basename(self.pathFile)
         self.content = pd.read_csv(self.pathFile)
-        self.content.set_index("Name", inplace=True)
 
     def getProperty(self):
         return "{ file path : " + self.pathFile + "; file name : " + self.fileName + ";} "
