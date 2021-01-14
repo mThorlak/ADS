@@ -10,6 +10,10 @@ from Serveur.sensor_manager import SensorLogFileModel as slfm
 from Serveur.rules_manager import SensorConfigModel as scm
 from Serveur.rules_manager.list import listModel as bwl
 
+# TODO :
+# Delete by params and no requests
+# PUT for updating sensors config and other things if needed
+
 app = flask.Flask(__name__)
 app.config["DEBUG"] = True
 
@@ -50,7 +54,7 @@ def allDataDay(date):
             directoryToDelete = ARCHIVE_LOG_PATH + date
             try:
                 service.deleteDirectory(directoryToDelete)
-                response = make_response(jsonify("Logs from " + date + " deleted"), 204)
+                response = make_response(jsonify("Logs from " + date + " deleted"), 200)
                 response.headers["Content-Type"] = "application/json"
                 return response
             except Exception:
@@ -85,7 +89,7 @@ def getDataFromSensor(sensor, date):
         if flask.request.method == 'DELETE':
             try:
                 service.deleteFile(pathFile)
-                response = make_response(jsonify("Logs of " + sensor + " from " + date + " are deleted"), 204)
+                response = make_response(jsonify("Logs of " + sensor + " from " + date + " are deleted"), 200)
                 response.headers["Content-Type"] = "application/json"
                 return response
             except Exception:
@@ -122,7 +126,7 @@ def getDateLogs():
 
 
 # Manage sensors_config.csv
-@app.route('/configSensor', methods=['GET', 'POST', 'DELETE'])
+@app.route('/configSensor', methods=['GET', 'POST', 'PUT'])
 def configSensor():
     # Get method
     if flask.request.method == 'GET':
@@ -136,6 +140,7 @@ def configSensor():
             response = make_response(jsonify(Exception), 400)
             response.headers["Content-Type"] = "application/json"
             return response
+
     # Post method
     if flask.request.method == 'POST':
         try:
@@ -167,16 +172,50 @@ def configSensor():
             response.headers["Content-Type"] = "application/json"
             return response
 
+    # PUT method
+    if flask.request.method == 'PUT':
+        try:
+            sensorToAdd = flask.request.get_json()
+        except Exception:
+            response = make_response(jsonify("Error, bad request"), 400)
+            response.headers["Content-Type"] = "application/json"
+            return response
+        sensorToAdd = {
+            'Name': str(sensorToAdd['Name']).lower(),
+            'Mac_Address': sensorToAdd['Mac_Address'],
+            'Priority': sensorToAdd['Priority']
+        }
+        dataFrame = pd.DataFrame(pd.json_normalize(sensorToAdd))
+        try:
+            open(CONFIG_SENSORS_PATH)
+            sensorConfigFile = scm.SensorConfigModel()
+            sensorConfigFile.content = sensorConfigFile.content[
+                sensorConfigFile.content.Name != sensorToAdd['Name']]
+            sensorConfigFile.content.to_csv(CONFIG_SENSORS_PATH, index=False)
+            dataFrame.to_csv(CONFIG_SENSORS_PATH, mode='a', sep=',', header=False, index=False)
+            response = make_response(sensorToAdd['Name'] + " sensors updated", 200)
+            response.headers["Content-Type"] = "application/json"
+            return response
+        # Manage case where the file does not exists, so we add headers into the file
+        except Exception:
+            response = make_response("Error during the update of a sensor in config_sensor file", 201)
+            response.headers["Content-Type"] = "application/json"
+            return response
+
+
+# Delete sensor from sensors_config.csv
+@app.route('/configSensor/<SensorName>', methods=['DELETE'])
+def deleteSensorFromConfigSensor(SensorName):
     # Delete method
     if flask.request.method == 'DELETE':
         try:
-            request = flask.request.get_json()
+            sensorNameToDelete = str(SensorName).lower()
             sensorConfigFile = scm.SensorConfigModel()
             sensorConfigFile.content = sensorConfigFile.content[
-                sensorConfigFile.content.Name != str(request['Name']).lower()]
+                sensorConfigFile.content.Name != sensorNameToDelete]
             sensorConfigFile.content.to_csv(CONFIG_SENSORS_PATH, index=False)
             result = sensorConfigFile.content.to_json(orient='records')
-            response = make_response(result, 201)
+            response = make_response(result, 200)
             response.headers["Content-Type"] = "application/json"
             return response
         except Exception:
@@ -186,7 +225,7 @@ def configSensor():
 
 
 # Manage whiteList.csv
-@app.route('/whiteList', methods=['GET', 'POST', 'DELETE'])
+@app.route('/whiteList', methods=['GET', 'POST'])
 def whiteList():
     # Get method
     if flask.request.method == 'GET':
@@ -215,10 +254,12 @@ def whiteList():
         dataFrame = pd.DataFrame(pd.json_normalize(sensorToAdd))
         try:
             open(WHITE_LIST_PATH)
-            dataFrame.to_csv(WHITE_LIST_PATH, mode='a', sep=',', header=False, index=False)
             whiteListFile = bwl.ListModel()
-            result = whiteListFile.contentWhiteList.to_json(orient='records')
-            response = make_response(result, 201)
+            if sensorToAdd['Mac_Address'] in whiteListFile.contentWhiteList['Mac_Address'].values:
+                pass
+            else:
+                dataFrame.to_csv(WHITE_LIST_PATH, mode='a', sep=',', header=False, index=False)
+            response = make_response(sensorToAdd['Mac_Address'] + " added", 201)
             response.headers["Content-Type"] = "application/json"
             return response
         # Manage case where the file does not exists, so we add headers into the file
@@ -230,16 +271,19 @@ def whiteList():
             response.headers["Content-Type"] = "application/json"
             return response
 
+
+# Delete sensor from sensors_config.csv
+@app.route('/whiteList/<MacAddress>', methods=['DELETE'])
+def deleteFromWhiteList(MacAddress):
     # Delete method
     if flask.request.method == 'DELETE':
         try:
-            request = flask.request.get_json()
+            macAddressToDelete = str(MacAddress)
             whiteListFile = bwl.ListModel()
             whiteListFile.contentWhiteList = whiteListFile.contentWhiteList[
-                whiteListFile.contentWhiteList.Mac_Address != str(request['Mac_Address'])]
+                whiteListFile.contentWhiteList.Mac_Address != macAddressToDelete]
             whiteListFile.contentWhiteList.to_csv(WHITE_LIST_PATH, index=False)
-            result = whiteListFile.contentWhiteList.to_json(orient='records')
-            response = make_response(result, 201)
+            response = make_response(macAddressToDelete + " deleted from white list", 200)
             response.headers["Content-Type"] = "application/json"
             return response
         except Exception:
@@ -249,7 +293,7 @@ def whiteList():
 
 
 # Manage blacklist.csv
-@app.route('/blackList', methods=['GET', 'POST', 'DELETE'])
+@app.route('/blackList', methods=['GET', 'POST'])
 def blackList():
     # Get method
     if flask.request.method == 'GET':
@@ -278,10 +322,12 @@ def blackList():
         dataFrame = pd.DataFrame(pd.json_normalize(sensorToAdd))
         try:
             open(BLACK_LIST_PATH)
-            dataFrame.to_csv(BLACK_LIST_PATH, mode='a', sep=',', header=False, index=False)
             blackListFile = bwl.ListModel()
-            result = blackListFile.contentBlackList.to_json(orient='records')
-            response = make_response(result, 201)
+            if sensorToAdd['Mac_Address'] in blackListFile.contentBlackList['Mac_Address'].values:
+                pass
+            else:
+                dataFrame.to_csv(BLACK_LIST_PATH, mode='a', sep=',', header=False, index=False)
+            response = make_response(sensorToAdd['Mac_Address'] + " added", 201)
             response.headers["Content-Type"] = "application/json"
             return response
         # Manage case where the file does not exists, so we add headers into the file
@@ -293,16 +339,19 @@ def blackList():
             response.headers["Content-Type"] = "application/json"
             return response
 
+
+# Delete sensor from blacklist.csv
+@app.route('/blackList/<MacAddress>', methods=['DELETE'])
+def deleteFromBlackList(MacAddress):
     # Delete method
     if flask.request.method == 'DELETE':
         try:
-            request = flask.request.get_json()
+            macAddressToDelete = str(MacAddress)
             blackListFile = bwl.ListModel()
-            blackListFile.contentBlackList = blackListFile.contentBlackList[
-                blackListFile.contentBlackList.Mac_Address != str(request['Mac_Address'])]
+            blackListFile.contentBlackList = blackListFile.contentWhiteList[
+                blackListFile.contentBlackList.Mac_Address != macAddressToDelete]
             blackListFile.contentBlackList.to_csv(BLACK_LIST_PATH, index=False)
-            result = blackListFile.contentBlackList.to_json(orient='records')
-            response = make_response(result, 201)
+            response = make_response(macAddressToDelete + " deleted from black list", 200)
             response.headers["Content-Type"] = "application/json"
             return response
         except Exception:
