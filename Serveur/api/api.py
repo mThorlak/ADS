@@ -3,16 +3,12 @@ import re
 import pandas as pd
 from flask import jsonify, make_response
 from Serveur.sensor_manager import ARCHIVE_LOG_PATH
-from Serveur.rules_manager import CONFIG_SENSORS_PATH, WHITE_LIST_PATH, BLACK_LIST_PATH
+from Serveur.rules_manager import CONFIG_SENSORS_PATH, WHITE_LIST_PATH, BLACK_LIST_PATH, ALARM_IS_DEACTIVATED
 from Serveur.api import service as service
 from Serveur.sensor_manager import SensorAllLogsFileModel as salfm
 from Serveur.sensor_manager import SensorLogFileModel as slfm
 from Serveur.rules_manager import SensorConfigModel as scm
 from Serveur.rules_manager.list import listModel as bwl
-
-# TODO :
-# Delete by params and no requests
-# PUT for updating sensors config and other things if needed
 
 app = flask.Flask(__name__)
 app.config["DEBUG"] = True
@@ -352,6 +348,20 @@ def deleteFromBlackList(MacAddress):
                 blackListFile.contentBlackList.Mac_Address != macAddressToDelete]
             blackListFile.contentBlackList.to_csv(BLACK_LIST_PATH, index=False)
             response = make_response(macAddressToDelete + " deleted from black list", 200)
+            response.headers["Content-Type"] = "application/json"
+            return response
+        except Exception:
+            response = make_response(jsonify(Exception), 400)
+            response.headers["Content-Type"] = "application/json"
+            return response
+
+
+@app.route('/test', methods=['GET'])
+def test():
+    # Delete method
+    if flask.request.method == 'GET':
+        try:
+            response = make_response("ok", 200)
             response.headers["Content-Type"] = "application/json"
             return response
         except Exception:
