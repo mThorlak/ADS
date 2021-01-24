@@ -1,1 +1,2 @@
-/Serveur/secrets/
+/Serveur/secrets/*
+/Serveur/secrets/twilio_credentials.py

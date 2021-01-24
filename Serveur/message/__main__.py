@@ -1,4 +1,4 @@
-from Serveur.Message import SendSMSModel
+from Serveur.message import SendSMSModel
 
 
 def main():

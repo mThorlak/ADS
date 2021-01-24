@@ -3,7 +3,7 @@ import re
 import pandas as pd
 from flask import jsonify, make_response
 from Serveur.sensor_manager import ARCHIVE_LOG_PATH
-from Serveur.rules_manager import CONFIG_SENSORS_PATH, WHITE_LIST_PATH, BLACK_LIST_PATH, ALARM_IS_DEACTIVATED
+from Serveur.rules_manager import CONFIG_SENSORS_PATH, WHITE_LIST_PATH, BLACK_LIST_PATH
 from Serveur.api import service as service
 from Serveur.sensor_manager import SensorAllLogsFileModel as salfm
 from Serveur.sensor_manager import SensorLogFileModel as slfm
@@ -344,7 +344,7 @@ def deleteFromBlackList(MacAddress):
         try:
             macAddressToDelete = str(MacAddress)
             blackListFile = bwl.ListModel()
-            blackListFile.contentBlackList = blackListFile.contentWhiteList[
+            blackListFile.contentBlackList = blackListFile.contentBlackList[
                 blackListFile.contentBlackList.Mac_Address != macAddressToDelete]
             blackListFile.contentBlackList.to_csv(BLACK_LIST_PATH, index=False)
             response = make_response(macAddressToDelete + " deleted from black list", 200)

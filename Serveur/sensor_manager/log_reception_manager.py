@@ -23,10 +23,11 @@ def runLogReceptionManager(pathFile):
     logToAnalyse = slfm.SensorLogFileModel(logToAnalyse)
     ### Step 4 ###
     linesToAnalyzed = getLinesToAnalyzed(logToAnalyse)
+    print("New lines to analyzed :")
     print(linesToAnalyzed)
     if linesToAnalyzed is not None:
         ### Step 5 ###
-        rules.run(pathFile, linesToAnalyzed)
+        rules.run(logToAnalyse.pathFile, linesToAnalyzed)
         ### Step 6 ###
         updateBuffer(logToAnalyse)
         ### Step 7 ###

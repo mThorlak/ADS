@@ -1,20 +1,21 @@
 from Serveur.sensor_manager import SensorLogFileModel as slfm
 from Serveur.rules_manager import SensorConfigModel as scm
 from Serveur.rules_manager.list import listModel as lm
+from Serveur.message import SendSMSModel
 
 
+# Return the priority value
 # Priority order :
-# 1 => Coffre fort
-# 2 => Stricte
-# 3 => Lieu animé
+# 1 => Vault
+# 2 => Strict
+# 3 => Busy place
 # 4 => Open bar
-
-# Return true if the file is a priority
-def isAPriority(pathFile):
+def getPriority(pathFile):
     logConfigSensor = scm.SensorConfigModel()
+    logConfigSensor.content.set_index('Name', inplace=True)
     logSensor = slfm.SensorLogFileModel(pathFile)
     resultSearch = logConfigSensor.content.loc[logSensor.sensorName]
-    return resultSearch['Priority'] == 1
+    return resultSearch['Priority']
 
 
 # Return true if the mac address is in the white list file
@@ -29,32 +30,63 @@ def isInBlackList(mac_address):
     return mac_address in blackList.contentBlackList['Mac_Address'].values
 
 
-# TODO : better management when rules is coming
-def analyseNewLines(pathFile, linesToAnalyzed):
-    alarmIsDeactivated = False
+# Run vault rule
+# row [0] = index
+# row [1] = ID
+# row [2] = Date
+# row [3] = Mac_Address
+def runVaultRules(pathFile, linesToAnalyzed):
     logSensor = slfm.SensorLogFileModel(pathFile)
-    # row [0] = index
-    # row [1] = ID
-    # row [2] = Date
-    # row [3] = Mac_Address
+    print("Someone entered in vault " + logSensor.sensorName + ", processing...")
     for row in linesToAnalyzed.itertuples():
-        if isInBlackList(row[3]):
-            sendAlert()
-        elif isInWhiteList(row[3]):
-            # If
+        date = row[2]
+        macAddress = row[3]
+        if isInBlackList(macAddress):
+            sendAlert("Black listed mac address " + macAddress + " is in vault " + logSensor.sensorName + " - date : " + date)
+            print("Black listed mac address !")
+        elif isInWhiteList(macAddress):
+            print("Access authorized for mac address : " + macAddress)
             continue
         else:
-            sendAlert()
-            print("Not in list")
+            print("Mac address not known ! ")
+            sendAlert("Mac address not known : " + macAddress + " is in vault " + logSensor.sensorName + " - date : " + date)
 
 
-# TODO
+def runStrictRules(pathFile, linesToAnalyzed):
+    logSensor = slfm.SensorLogFileModel(pathFile)
+    print("Someone entered in strict sensor " + logSensor.sensorName + ", processing...")
+    for row in linesToAnalyzed.itertuples():
+        date = row[2]
+        macAddress = row[3]
+        if isInBlackList(macAddress):
+            sendAlert("Black listed mac address " + macAddress + " is in strict sensor " + logSensor.sensorName + " - date : " + date)
+            print("Black listed mac address !")
+        elif isInWhiteList(macAddress):
+            print("Access authorized for mac address : " + macAddress)
+            continue
+        else:
+            print("Mac address not known : " + macAddress + " is in strict sensor " + logSensor.sensorName + " - date : " + date)
+
+
 # Send an alert to the mobile of the user
-def sendAlert():
-    print("Alert sent")
+def sendAlert(content):
+    sendSms = SendSMSModel.SendSMSModel()
+    sendSms.sendMessage(content)
 
 
+# TODO : get a better management rules
+# run the rule manager
 def run(pathFile, linesToAnalyzed):
-    if isAPriority(pathFile):
-        sendAlert()
-    analyseNewLines(pathFile, linesToAnalyzed)
+    # 1 => Check if the file received is a priority
+    priority = getPriority(pathFile)
+    if priority == 1:
+        runVaultRules(pathFile, linesToAnalyzed)
+    elif priority == 2:
+        runStrictRules(pathFile, linesToAnalyzed)
+    elif priority == 3:
+        print("Priority 3")
+    elif priority == 4:
+        print("Open bar, nothing to do ;)")
+        ...
+    else:
+        print("Out of scope priority")
