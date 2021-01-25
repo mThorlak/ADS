@@ -66,11 +66,12 @@ def insertIntoBigDataLogFile(logFileModel):
         header = ['ID', 'Date', 'Mac_Address']
         # Reindex for deleting _merge columns
         logsToAdd.reindex(header)
+        print(logsToAdd)
         logsToAdd.to_csv(ARCHIVE_LOG_PATH + logFileModel.dateLog + '/all_logs.csv', mode='a', header=False,
                          index=False, columns=header)
 
 
-# Return the last line (in dataFrame) analyzed before receiving the new sensor log file
+# Return 1 if lines has been analyzed or 0 if never analyzed or None if no line to analyzed
 def checkBuffer(logFileModel):
     bufferFile = bfm.BufferFileModel()
     lastRow = logFileModel.content.iloc[[-1]]
@@ -82,7 +83,8 @@ def checkBuffer(logFileModel):
     rowInBuffer = bufferFile.content[bufferFile.content['Name'] == newContentBuffer['Name']]
     # If the sensor is not in the buffer file, the first line of the sensor's log file is return
     if rowInBuffer.empty:
-        return logFileModel.content.iloc[[0]]
+        print("Not existing in buffer, start from the beginning...")
+        return 0
     # Else, the line registered in the buffer file
     else:
         # Avoid to check line already analysed
@@ -90,7 +92,7 @@ def checkBuffer(logFileModel):
         if newContentBuffer['LastIndex'] == indexLogFileModel.index.values[0]:
             print("Line already analysed")
             return None
-        return logFileModel.content[logFileModel.content['Date'] == rowInBuffer['Date'].item()].iloc[[0]]
+        return 1
 
 
 # Return all the new lines that needs to be analyzed
@@ -99,10 +101,18 @@ def getLinesToAnalyzed(logFileModel):
     # Case where there is no more lines to analise
     if checkBufferResult is None:
         return None
+    # Case where the log file was never analyzed
+    elif checkBufferResult == 0:
+        print("Never analyzed")
+        return logFileModel.content
+    # Case where there is lines to analise
     else:
-        indexWhereStart = logFileModel.content[logFileModel.content['Date'] == checkBufferResult['Date'].item()]
-        # If more than one values, we take only the first index of the rows
-        indexWhereStart = indexWhereStart.index.values[0]
+        bufferFile = bfm.BufferFileModel()
+        lineBufferFile = bufferFile.content.get(bufferFile.content['Name'] == logFileModel.content['ID'][0])
+        print("Line buffer file :")
+        print(lineBufferFile)
+        indexWhereStart = lineBufferFile['LastIndex'].values[0]
+        print(indexWhereStart)
         linesToAnalyzed = logFileModel.content.iloc[indexWhereStart + 1: logFileModel.content.index[-1] + 1]
         return linesToAnalyzed
 
@@ -135,4 +145,4 @@ def clearBuffer():
 
 def run():
     # Example
-    runLogReceptionManager(ACTUAL_DIRECTORY + '/reception_log/test2__10-12-2020.csv')
+    runLogReceptionManager(ACTUAL_DIRECTORY + '/reception_log/test1__01-12-2020.csv')
