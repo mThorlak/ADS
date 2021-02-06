@@ -1,8 +1,8 @@
-from Serveur.sensor_manager import log_reception_manager
+from Serveur.sensor_manager import runNewLogs
 
 
 def main():
-    log_reception_manager.run()
+    runNewLogs.runNewLog()
 
 
 main()

@@ -1,9 +1,10 @@
 import os
 import shutil as su
+import sys
 import pandas as pd
-from Serveur.sensor_manager import SensorLogFileModel as slfm, ARCHIVE_LOG_PATH, ACTUAL_DIRECTORY
-from Serveur.sensor_manager import BufferFileModel as bfm
 from Serveur.rules_manager import rules as rules
+from Serveur.sensor_manager import BufferFileModel as bfm
+from Serveur.sensor_manager import SensorLogFileModel as slfm, ARCHIVE_LOG_PATH
 
 
 # Step 1 : get path of the csv file
@@ -12,30 +13,48 @@ from Serveur.rules_manager import rules as rules
 # Step 4 : check the buffer for keeping only the new lines
 # Step 5 : manage the new lines of the file depending of the rules
 # Step 6 : update the buffer
-# Step 7 : register new lines in the 'big log data' file
-# Step 8 : clear the buffer at the end of the day
+# Step 7 : register new lines in the 'all_logs.csv' file
+# Step 8 : remove the log file from reception_log
+# Step 9 : clear the buffer at the end of the day
 
 def runLogReceptionManager(pathFile):
     ### Step 1 and 2 ###
     sensorLogFileReceived = slfm.SensorLogFileModel(pathFile)
+    print(" ############## Step 1 and 2 ##############")
+    print("File instance created for : " + sensorLogFileReceived.pathFile)
     ### Step 3 ###
+    print(" ############## Step 3 ##############")
     logToAnalyse = archiveLogFile(sensorLogFileReceived.pathFile, sensorLogFileReceived.fileName, sensorLogFileReceived.dateLog)
     logToAnalyse = slfm.SensorLogFileModel(logToAnalyse)
+    print("Log file + " + logToAnalyse.fileName + " registered and archived")
     ### Step 4 ###
+    print(" ############## Step 4 ##############")
     linesToAnalyzed = getLinesToAnalyzed(logToAnalyse)
     print("New lines to analyzed :")
     print(linesToAnalyzed)
     if linesToAnalyzed is not None:
         ### Step 5 ###
+        print(" ############## Step 5 ##############")
         rules.run(logToAnalyse.pathFile, linesToAnalyzed)
+        print("Rules has been processed")
         ### Step 6 ###
+        print(" ############## Step 6 ##############")
         updateBuffer(logToAnalyse)
+        print("Buffer updated")
         ### Step 7 ###
+        print(" ############## Step 7 ##############")
         insertIntoBigDataLogFile(logToAnalyse)
+        print("New lines inserted in all_logs.csv of the day")
     else:
         print("Nothing to analyse")
     ### Step 8 ###
+    print(" ############## Step 8 ##############")
+    deleteFile(sensorLogFileReceived)
+    print(sensorLogFileReceived.pathFile + " has been deleted")
+    ### Step 9 ###
+    # print(" ############## Step 9 ##############")
     # clearBuffer()
+    # print("Buffer cleaned")
 
 
 # Archive log file send by sensor in archive log directory sort by day and return the path of the file registered
@@ -143,6 +162,17 @@ def clearBuffer():
     bufferFile.content.to_csv(bufferFile.pathFile, mode='w', sep=',', header=True, index=False)
 
 
+# Delete file given in parameter
+def deleteFile(sensorLogFileReceived):
+    try:
+        os.remove(sensorLogFileReceived.pathFile)
+        print(sensorLogFileReceived.pathFile + " removed")
+    except OSError as e:
+        print("Error: %s : %s" % (sensorLogFileReceived.fileName, e.strerror))
+
+
 def run():
+    print(sys.argv[1])
     # Example
-    runLogReceptionManager(ACTUAL_DIRECTORY + '/reception_log/test1__01-12-2020.csv')
+    # clearBuffer()
+    # runLogReceptionManager(ACTUAL_DIRECTORY + '/reception_log/test1__10-12-2020.csv')

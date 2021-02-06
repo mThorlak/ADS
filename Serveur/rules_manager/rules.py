@@ -59,8 +59,8 @@ def runStrictRules(pathFile, linesToAnalyzed):
         date = row[2]
         macAddress = row[3]
         if isInBlackList(macAddress):
+            print("Black listed mac address : " + macAddress + " !")
             sendAlert("Black listed mac address " + macAddress + " is in strict sensor " + logSensor.sensorName + " - date : " + date)
-            print("Black listed mac address !")
         elif isInWhiteList(macAddress):
             print("Access authorized for mac address : " + macAddress)
             continue
