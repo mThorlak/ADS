@@ -9,6 +9,7 @@ from Serveur.sensor_manager import SensorAllLogsFileModel as salfm
 from Serveur.sensor_manager import SensorLogFileModel as slfm
 from Serveur.rules_manager import SensorConfigModel as scm
 from Serveur.rules_manager.list import listModel as bwl
+from Serveur.sensor_manager.SensorModel import SensorModel
 
 app = flask.Flask(__name__)
 app.config["DEBUG"] = True
@@ -26,6 +27,27 @@ def ping():
     response = make_response("pong", 200)
     response.headers["Content-Type"] = "application/json"
     return response
+
+
+# Receive logs from a sensor, convert it to csv format for processing
+@app.route('/sensor', methods=['POST'])
+def insertSensor():
+    if flask.request.method == 'POST':
+        request_data = flask.request.get_json()
+        sensor_name = request_data["Sensor_Name"]
+        sensor_date = request_data["Date_Sensor"]
+        room_description = request_data["Room_Description"]
+        content = request_data["Content"]
+        try:
+            sensor = SensorModel(sensor_name, sensor_date, room_description, content)
+            sensor.convertIntoCsvLogFile()
+            response = make_response("Log inserted", 200)
+            response.headers["Content-Type"] = "application/json"
+            return response
+        except Exception:
+            response = make_response(jsonify("Bad format request"), 400)
+            response.headers["Content-Type"] = "application/json"
+            return response
 
 
 # Get or delete content of all_logs.csv from the date given
