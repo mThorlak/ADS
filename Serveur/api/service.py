@@ -1,6 +1,7 @@
 import os as os
 import shutil
 from Serveur.sensor_manager import ARCHIVE_LOG_PATH
+from Serveur.sensor_manager import SensorAllLogsFileModel as salfm
 
 
 # Get all the log dates by listing the name of the archiv_logs's subdirectories
@@ -37,3 +38,16 @@ def deleteFile(fileName):
         os.remove(fileName)
     except OSError as e:
         print("Error: %s : %s" % (fileName, e.strerror))
+
+
+# Get all the logs from a specified date
+def getAllLogsByDate(date):
+    pathFile = ARCHIVE_LOG_PATH + date + '/all_logs.csv'
+    return salfm.SensorAllLogsFileModel(pathFile)
+
+
+# List all logs for a specified Mac address and date
+def getLogsByDateAndMacAddress(date, mac_address):
+    allLogs = getAllLogsByDate(date)
+    logsMacAddress = allLogs.getLogsForMacAddress(mac_address)
+    return logsMacAddress

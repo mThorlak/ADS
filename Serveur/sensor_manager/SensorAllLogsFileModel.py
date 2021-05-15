@@ -25,3 +25,6 @@ class SensorAllLogsFileModel:
 
     def getDateLog(self):
         return self.dateLog
+
+    def getLogsForMacAddress(self, mac_address):
+        return self.content.loc[self.content['Mac_Address'] == mac_address]

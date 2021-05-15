@@ -48,10 +48,9 @@ def insertSensor():
         request_data = flask.request.get_json()
         sensor_name = request_data["Sensor_Name"]
         sensor_date = request_data["Date_Sensor"]
-        room_description = request_data["Room_Description"]
         content = request_data["Content"]
         try:
-            sensor = SensorModel(sensor_name, sensor_date, room_description, content)
+            sensor = SensorModel(sensor_name, sensor_date, content)
             logger.info('Sensor information received')
             logger.info(sensor.getSensorDescription())
             logger.info(sensor.getContent())
@@ -222,7 +221,8 @@ def configSensor():
         sensorToAdd = {
             'Name': str(sensorToAdd['Name']).lower(),
             'Mac_Address': sensorToAdd['Mac_Address'],
-            'Priority': sensorToAdd['Priority']
+            'Priority': sensorToAdd['Priority'],
+            'Room_Description': sensorToAdd['Room_Description']
         }
         dataFrame = pd.DataFrame(pd.json_normalize(sensorToAdd))
         try:
@@ -260,7 +260,8 @@ def configSensor():
         sensorToAdd = {
             'Name': str(sensorToAdd['Name']).lower(),
             'Mac_Address': sensorToAdd['Mac_Address'],
-            'Priority': sensorToAdd['Priority']
+            'Priority': sensorToAdd['Priority'],
+            'Room_Description': sensorToAdd['Room_Description']
         }
         dataFrame = pd.DataFrame(pd.json_normalize(sensorToAdd))
         try:
@@ -473,6 +474,29 @@ def deleteFromBlackList(MacAddress):
             response = make_response(jsonify(Exception), 400)
             response.headers["Content-Type"] = "application/json"
             return response
+
+
+# Search logs by mac_address and date
+@app.route('/searchLogs/<date>/<mac_address>', methods=['GET'])
+def listLogsByDateAndMacAddress(date, mac_address):
+    # Check pattern of the date given for avoiding error
+    pattern = re.compile("[0-9][0-9]-[0-9][0-9]-[0-9][0-9][0-9][0-9]$")
+    if pattern.match(date):
+        if flask.request.method == 'GET':
+            try:
+                logger.info('Searching logs by mac address and date....')
+                logsForSpecifiedDateAndMacAddress = service.getLogsByDateAndMacAddress(date, mac_address)
+                logger.info(logsForSpecifiedDateAndMacAddress)
+                result = logsForSpecifiedDateAndMacAddress.to_json(orient='records')
+                response = make_response(result, 200)
+                response.headers["Content-Type"] = "application/json"
+                return response
+            except Exception as e:
+                logger.error('Search logs')
+                logger.error(e)
+                response = make_response(jsonify("Logs not found"), 400)
+                response.headers["Content-Type"] = "application/json"
+                return response
 
 
 def run():

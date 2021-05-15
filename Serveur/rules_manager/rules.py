@@ -18,6 +18,15 @@ def getPriority(pathFile):
     return resultSearch['Priority']
 
 
+# Get the location of the lines to analyze
+def getLocation(pathFile):
+    logConfigSensor = scm.SensorConfigModel()
+    logConfigSensor.content.set_index('Name', inplace=True)
+    logSensor = slfm.SensorLogFileModel(pathFile)
+    resultSearch = logConfigSensor.content.loc[logSensor.sensorName]
+    return resultSearch['Room_Description']
+
+
 # Return true if the mac address is in the white list file
 def isInWhiteList(mac_address):
     whiteListFile = lm.ListModel()
@@ -79,6 +88,9 @@ def sendAlert(content):
 def run(pathFile, linesToAnalyzed):
     # 1 => Check if the file received is a priority
     priority = getPriority(pathFile)
+    # 2 -> Check the location
+    location = getLocation(pathFile)
+    print(location)
     if priority == 1:
         runVaultRules(pathFile, linesToAnalyzed)
     elif priority == 2:
