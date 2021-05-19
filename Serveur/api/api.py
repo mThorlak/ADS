@@ -222,7 +222,8 @@ def configSensor():
             'Name': str(sensorToAdd['Name']).lower(),
             'Mac_Address': sensorToAdd['Mac_Address'],
             'Priority': sensorToAdd['Priority'],
-            'Room_Description': sensorToAdd['Room_Description']
+            'Room_Description': sensorToAdd['Room_Description'],
+            'Range': None
         }
         dataFrame = pd.DataFrame(pd.json_normalize(sensorToAdd))
         try:
@@ -261,7 +262,8 @@ def configSensor():
             'Name': str(sensorToAdd['Name']).lower(),
             'Mac_Address': sensorToAdd['Mac_Address'],
             'Priority': sensorToAdd['Priority'],
-            'Room_Description': sensorToAdd['Room_Description']
+            'Room_Description': sensorToAdd['Room_Description'],
+            'Range': sensorToAdd['Range']
         }
         dataFrame = pd.DataFrame(pd.json_normalize(sensorToAdd))
         try:
@@ -282,6 +284,71 @@ def configSensor():
             logger.error('PUT config sensor file')
             logger.error(e)
             response = make_response("File does not exists", 500)
+            response.headers["Content-Type"] = "application/json"
+            return response
+
+
+# Manage sensors_config range
+@app.route('/configSensor/range', methods=['PUT'])
+def addRangeConfigSensor():
+    if flask.request.method == 'PUT':
+        try:
+            rangeToAdd = flask.request.get_json()
+            rangeToAdd = {
+                'Name': str(rangeToAdd['Name']).lower(),
+                'Min_Range': rangeToAdd['Min_Range'],
+                'Max_Range': rangeToAdd['Max_Range']
+            }
+        except Exception as e:
+            logger.error('POST RSSI config sensor')
+            logger.error(e)
+            response = make_response(jsonify("Error, bad request"), 400)
+            response.headers["Content-Type"] = "application/json"
+            return response
+        try:
+            sensorConfigFile = scm.SensorConfigModel()
+            if rangeToAdd['Name'] in sensorConfigFile.content['Name'].values:
+                sensorConfigFile.content.at[sensorConfigFile.content['Name'] == rangeToAdd['Name'], 'Min_Range'] = \
+                    rangeToAdd['Min_Range']
+                sensorConfigFile.content.at[sensorConfigFile.content['Name'] == rangeToAdd['Name'], 'Max_Range'] = \
+                    rangeToAdd['Max_Range']
+                logger.info('Modifying config for sensor :')
+                logger.info(sensorConfigFile.content.to_json)
+                sensorConfigFile.content.to_csv(CONFIG_SENSORS_PATH, mode='w', sep=',', header=True, index=False)
+            result = sensorConfigFile.content.to_json(orient='records')
+            response = make_response(result, 201)
+            response.headers["Content-Type"] = "application/json"
+            return response
+        # Manage case where the file does not exists
+        except Exception as e:
+            logger.error('Add range config file....')
+            logger.error(e)
+            response = make_response("File does not exist", 400)
+            response.headers["Content-Type"] = "application/json"
+            return response
+
+
+# Flush range for a specified sensor
+@app.route('/configSensor/<SensorName>', methods=['DELETE'])
+def deleteRangeConfigSensor(SensorName):
+    if flask.request.method == 'DELETE':
+        try:
+            sensorConfigFile = scm.SensorConfigModel()
+            SensorName = str(SensorName).lower()
+            if SensorName in sensorConfigFile.content['Name'].values:
+                sensorConfigFile.content.at[sensorConfigFile.content['Name'] == SensorName, 'Min_Range'] = None
+                sensorConfigFile.content.at[sensorConfigFile.content['Name'] == SensorName, 'Max_Range'] = None
+                logger.info('Deleting range for specified config sensor... :')
+                logger.info(sensorConfigFile.content.to_json)
+                sensorConfigFile.content.to_csv(CONFIG_SENSORS_PATH, mode='w', sep=',', header=True, index=False)
+            result = sensorConfigFile.content.to_json(orient='records')
+            response = make_response(result, 201)
+            response.headers["Content-Type"] = "application/json"
+            return response
+        except Exception as e:
+            logger.error('DELETE range sensor from the config sensor file')
+            logger.error(e)
+            response = make_response(jsonify(Exception), 400)
             response.headers["Content-Type"] = "application/json"
             return response
 
