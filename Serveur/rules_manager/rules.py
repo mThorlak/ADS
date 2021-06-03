@@ -44,12 +44,14 @@ def isInBlackList(mac_address):
 # row [1] = ID
 # row [2] = Date
 # row [3] = Mac_Address
+# row [4] = RSSI
 def runVaultRules(pathFile, linesToAnalyzed):
     logSensor = slfm.SensorLogFileModel(pathFile)
     print("Someone entered in vault " + logSensor.sensorName + ", processing...")
     for row in linesToAnalyzed.itertuples():
         date = row[2]
         macAddress = row[3]
+        rssi = row[4]
         if isInBlackList(macAddress):
             sendAlert("Black listed mac address " + macAddress + " is in vault " + logSensor.sensorName + " - date : " + date)
             print("Black listed mac address !")
