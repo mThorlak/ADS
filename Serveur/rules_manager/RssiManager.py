@@ -16,25 +16,53 @@ def getRssiRange(pathFile):
     return resultSearch['Min_Range', 'Max_Range']
 
 
-# Get all sensors with room description and range that received signal from the specified mac_address at the same time
-def establishLocation(macAddress, date):
+# Sort that received signal from the specified mac_address during the last or next 30 seconds
+def sortLogsInTheGoodTimeRange(macAddress, date):
     date = date[:-1]
     dateConverter = datetime.strptime(date, '%Y-%d-%mT%H:%M:%S')
-    date = dateConverter.date().strftime("%d-%m-%Y")
-    allTodayLogsMacAddress = service.getLogsByDateAndMacAddress(date, macAddress)
-    return allTodayLogsMacAddress
+    # Get the date without the time for finding the good "all logs" file
+    dateOfTheDay = dateConverter.date().strftime("%d-%m-%Y")
+    allTodayLogsMacAddress = service.getLogsByDateAndMacAddress(dateOfTheDay, macAddress)
+    allTodayLogsMacAddressList = allTodayLogsMacAddress.values.tolist()
+    dateLogs = []
+    # Collect all dates and removing the "Z" at the end
+    for logs in allTodayLogsMacAddressList:
+        dateTmp = logs[1]
+        dateTmp = dateTmp[:-1]
+        dateLogs.append(dateTmp)
+    # Check all the times and get the ones which are in the last 30 seconds
+    i = 0
+    storeIndex = []
+    while i < len(dateLogs):
+        dateConverted = datetime.strptime(dateLogs[i], '%Y-%d-%mT%H:%M:%S')
+        if dateConverted.time() < dateConverter.time():
+            timeSubtracted = (dateConverter - dateConverted).seconds
+        else:
+            timeSubtracted = (dateConverted - dateConverter).seconds
+        # Collect only the logs similar in a 30 seconds range
+        if timeSubtracted <= 30:
+            storeIndex.append(i)
+        i = i + 1
+    result = []
+    for i in storeIndex:
+        result.append(allTodayLogsMacAddressList[i])
+    return result
+
+
+# Get all sensors with room description and range that received signal from the specified mac_address at the same time
+def calculateEuclideanDistance(listOfLogsSorted):
     # => Récupérer les logs qui sont à la même minute, à quelques secondes prêt
     # Comparer la puissance du RSSI qu'ils ont récupérés
-        # => Déterminer le plus puissant
-        # => Déterminer ceux dont le RSSI est dans la range du sensor
-        # Cas 1 : le RSSI est valide pour un seul endroit => il est donc dans la piece correspondante
-        # Cas 2 : le RSSI est valide pour plusieurs endroits => on dit que le user se trouve dans la piece au meilleur RSSI, en disant que c'est aussi proche des autres
-        # Cas 3 : il n'est dans aucune des range => on fait rien
+    # Distance euclidienne, avec le plus fort RSS pour valeur 1
+    return None
 
+
+# Get all sensors with room description and range that received signal from the specified mac_address at the same time
+# def function...
 
 def test():
-    test1 = establishLocation("A1:B5:R1:N1:B9", "2020-10-11T21:38:44Z")
-    print(test1)
+    listOfLogsSorted = sortLogsInTheGoodTimeRange("A1:B5:R1:N1:B9", "2020-10-11T21:38:44Z")
+    # calculateEuclideanDistance(listOfLogsSorted)
     return None
 
 
