@@ -296,7 +296,6 @@ def addRangeConfigSensor():
             rangeToAdd = flask.request.get_json()
             rangeToAdd = {
                 'Name': str(rangeToAdd['Name']).lower(),
-                'Min_Range': rangeToAdd['Min_Range'],
                 'Max_Range': rangeToAdd['Max_Range']
             }
         except Exception as e:
@@ -308,8 +307,6 @@ def addRangeConfigSensor():
         try:
             sensorConfigFile = scm.SensorConfigModel()
             if rangeToAdd['Name'] in sensorConfigFile.content['Name'].values:
-                sensorConfigFile.content.at[sensorConfigFile.content['Name'] == rangeToAdd['Name'], 'Min_Range'] = \
-                    rangeToAdd['Min_Range']
                 sensorConfigFile.content.at[sensorConfigFile.content['Name'] == rangeToAdd['Name'], 'Max_Range'] = \
                     rangeToAdd['Max_Range']
                 logger.info('Modifying config for sensor :')
@@ -329,14 +326,13 @@ def addRangeConfigSensor():
 
 
 # Flush range for a specified sensor
-@app.route('/configSensor/<SensorName>', methods=['DELETE'])
+@app.route('/configSensor/range/<SensorName>', methods=['DELETE'])
 def deleteRangeConfigSensor(SensorName):
     if flask.request.method == 'DELETE':
         try:
             sensorConfigFile = scm.SensorConfigModel()
             SensorName = str(SensorName).lower()
             if SensorName in sensorConfigFile.content['Name'].values:
-                sensorConfigFile.content.at[sensorConfigFile.content['Name'] == SensorName, 'Min_Range'] = None
                 sensorConfigFile.content.at[sensorConfigFile.content['Name'] == SensorName, 'Max_Range'] = None
                 logger.info('Deleting range for specified config sensor... :')
                 logger.info(sensorConfigFile.content.to_json)

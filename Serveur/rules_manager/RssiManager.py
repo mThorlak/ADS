@@ -4,7 +4,6 @@ import Serveur.api.service as service
 from Serveur.sensor_manager import SensorLogFileModel as slfm, ARCHIVE_LOG_PATH
 from Serveur.rules_manager import SensorConfigModel as scm
 from Serveur.sensor_manager import SensorAllLogsFileModel as salfm
-import Serveur.rules_manager.rules as rules
 
 
 # Get RSSI range of a specified config sensor
@@ -13,10 +12,13 @@ def getRssiRange(pathFile):
     logConfigSensor.content.set_index('Name', inplace=True)
     logSensor = slfm.SensorLogFileModel(pathFile)
     resultSearch = logConfigSensor.content.loc[logSensor.sensorName]
-    return resultSearch['Min_Range', 'Max_Range']
+    return resultSearch['Max_Range']
 
 
 # Sort that received signal from the specified mac_address during the last or next 30 seconds
+# Return example : [['Test8-02', '2020-13-10T21:39:10Z', 'A1:B5:R1:N1:B9', -60],
+# ['Test3-01', '2020-13-10T21:38:20Z', 'A1:B5:R1:N1:B9', -40],
+# ['Test4-05', '2020-13-10T21:39:03Z', 'A1:B5:R1:N1:B9', -50]]
 def sortLogsInTheGoodTimeRange(macAddress, date):
     date = date[:-1]
     dateConverter = datetime.strptime(date, '%Y-%d-%mT%H:%M:%S')
@@ -39,14 +41,37 @@ def sortLogsInTheGoodTimeRange(macAddress, date):
             timeSubtracted = (dateConverter - dateConverted).seconds
         else:
             timeSubtracted = (dateConverted - dateConverter).seconds
-        # Collect only the logs similar in a 30 seconds range
-        if timeSubtracted <= 30:
+        # Collect only the logs similar in a 15 seconds range
+        if timeSubtracted <= 15:
             storeIndex.append(i)
         i = i + 1
     result = []
     for i in storeIndex:
         result.append(allTodayLogsMacAddressList[i])
     return result
+
+
+# Sort list of logs with the good RSSI range
+# Return example : [['Test8-02', '2020-13-10T21:39:10Z', 'A1:B5:R1:N1:B9', -60],
+# ['Test3-01', '2020-13-10T21:38:20Z', 'A1:B5:R1:N1:B9', -40]]
+def sortLogsInTheGoodRssiRange(listOfLogsInTheGoodTimeRange):
+    listSortedWithGoodRssiRange = []
+    sensorConfigModel = scm.SensorConfigModel()
+    i = 0
+    while i < len(listOfLogsInTheGoodTimeRange):
+        sensorNameLog = listOfLogsInTheGoodTimeRange[i][0]
+        rssiLog = listOfLogsInTheGoodTimeRange[i][3]
+        # Find the good sensor config for getting the min and max RSSI range
+        for sensorConfigName in sensorConfigModel.content["Name"].values:
+            # I found, check the log RSSI value is in the range accepted by the config sensor
+            if str(sensorConfigName).capitalize() in sensorNameLog:
+                sensorConfig = sensorConfigModel.content.loc[sensorConfigModel.content["Name"] == sensorConfigName] \
+                    .values.tolist()
+                maxRange = sensorConfig[0][4]
+                if rssiLog >= maxRange:
+                    listSortedWithGoodRssiRange.append(listOfLogsInTheGoodTimeRange[i])
+        i = i + 1
+    return listSortedWithGoodRssiRange
 
 
 # Get all sensors that received signal from the specified mac_address at the same time,
@@ -77,19 +102,17 @@ def calculateEuclideanDistance(listOfLogsSorted):
     return listDistance
 
 
-# TODO : to finish
+# Return a list with the
 # {'Test3-01': ['Test3-01', '2020-13-10T21:38:20Z', 'A1:B5:R1:N1:B9', 1, 'Garage'],
 # 'Test8-02': ['Test8-02', '2020-13-10T21:39:10Z', 'A1:B5:R1:N1:B9', 59, 'Cuisine'],
 # 'Test4-05': ['Test4-05', '2020-13-10T21:39:03Z', 'A1:B5:R1:N1:B9', 49, 'Salon']}
 def determineLocation(listDistance, date):
-    print(listDistance)
     # Get the good all logs file
     date = date[:-1]
     dateConverter = datetime.strptime(date, '%Y-%d-%mT%H:%M:%S')
     dateOfTheDay = dateConverter.date().strftime("%d-%m-%Y")
     pathFile = ARCHIVE_LOG_PATH + dateOfTheDay + '/all_logs.csv'
     allLogsFileModel = salfm.SensorAllLogsFileModel(pathFile)
-    print(allLogsFileModel.content)
     sensorConfigModel = scm.SensorConfigModel()
     result = {}
     for i in listDistance:
@@ -103,18 +126,16 @@ def determineLocation(listDistance, date):
                 roomDescription = sensorConfig[0][3]
                 log.append(roomDescription)
         result[i] = log
-    print(result)
-    print(sensorConfigModel.content["Name"].values)
-    return None
+    return result
 
-
-# TODO : sort list of logs sorted with the good range
 
 def test():
-    listOfLogsSorted = sortLogsInTheGoodTimeRange("A1:B5:R1:N1:B9", "2020-10-11T21:38:44Z")
-    listDistance = calculateEuclideanDistance(listOfLogsSorted)
-    determineLocation(listDistance, "2020-10-11T21:38:44Z")
-    return None
+    listOfLogsInTheGoodTimeRange = sortLogsInTheGoodTimeRange("A1:B5:R1:N1:B9", "2020-10-11T21:38:44Z")
+    listLogsInTheGoodRssiRange = sortLogsInTheGoodRssiRange(listOfLogsInTheGoodTimeRange)
+    listDistance = calculateEuclideanDistance(listLogsInTheGoodRssiRange)
+    result = determineLocation(listDistance, "2020-10-11T21:38:44Z")
+    print(result)
+    return result
 
 
 if __name__ == "__main__":
