@@ -1,3 +1,5 @@
 Name,Mac_Address,Priority,Room_Description,Max_Range
 test8,Blablabliblou,2,Salon,-80.0
 test3,Blablabliblou,3,Garage,-70.0
+test4,Blablabliblou,4,Kitchen,-70.0
+test2,Blablabliblou,2,Entry,-70.0

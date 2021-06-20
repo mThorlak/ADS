@@ -11,6 +11,7 @@ from Serveur.sensor_manager import SensorAllLogsFileModel as salfm
 from Serveur.sensor_manager import SensorLogFileModel as slfm
 from Serveur.rules_manager import SensorConfigModel as scm
 from Serveur.rules_manager.list import listModel as bwl
+from Serveur.rules_manager import RssiManager as RssiManager
 from Serveur.sensor_manager.SensorModel import SensorModel
 
 app = flask.Flask(__name__)
@@ -560,6 +561,29 @@ def listLogsByDateAndMacAddress(date, mac_address):
                 response = make_response(jsonify("Logs not found"), 400)
                 response.headers["Content-Type"] = "application/json"
                 return response
+
+
+# Locate device
+@app.route('/locate/<date>/<mac_address>', methods=['GET'])
+def locateDevice(date, mac_address):
+    # Check pattern of the date given for avoiding error
+    if flask.request.method == 'GET':
+        try:
+            logger.info('Locate mac address ....')
+            result = RssiManager.run(mac_address, date)
+            if result is None:
+                response = make_response("No location found", 200)
+                response.headers["Content-Type"] = "application/json"
+            else:
+                response = make_response(result, 200)
+                response.headers["Content-Type"] = "application/json"
+            return response
+        except Exception as e:
+            logger.error('Locate logs')
+            logger.error(e)
+            response = make_response(jsonify("Logs not found"), 400)
+            response.headers["Content-Type"] = "application/json"
+            return response
 
 
 def run():

@@ -15,13 +15,13 @@ def getRssiRange(pathFile):
     return resultSearch['Max_Range']
 
 
-# Sort that received signal from the specified mac_address during the last or next 30 seconds
+# Sort that received signal from the specified mac_address during the last or next 15 seconds
 # Return example : [['Test8-02', '2020-13-10T21:39:10Z', 'A1:B5:R1:N1:B9', -60],
 # ['Test3-01', '2020-13-10T21:38:20Z', 'A1:B5:R1:N1:B9', -40],
 # ['Test4-05', '2020-13-10T21:39:03Z', 'A1:B5:R1:N1:B9', -50]]
 def sortLogsInTheGoodTimeRange(macAddress, date):
     date = date[:-1]
-    dateConverter = datetime.strptime(date, '%Y-%d-%mT%H:%M:%S')
+    dateConverter = datetime.strptime(date, '%Y-%m-%dT%H:%M:%S')
     # Get the date without the time for finding the good "all logs" file
     dateOfTheDay = dateConverter.date().strftime("%d-%m-%Y")
     allTodayLogsMacAddress = service.getLogsByDateAndMacAddress(dateOfTheDay, macAddress)
@@ -32,11 +32,11 @@ def sortLogsInTheGoodTimeRange(macAddress, date):
         dateTmp = logs[1]
         dateTmp = dateTmp[:-1]
         dateLogs.append(dateTmp)
-    # Check all the times and get the ones which are in the last 30 seconds
+    # Check all the times and get the ones which are in the last 15 seconds
     i = 0
     storeIndex = []
     while i < len(dateLogs):
-        dateConverted = datetime.strptime(dateLogs[i], '%Y-%d-%mT%H:%M:%S')
+        dateConverted = datetime.strptime(dateLogs[i], '%Y-%m-%dT%H:%M:%S')
         if dateConverted.time() < dateConverter.time():
             timeSubtracted = (dateConverter - dateConverted).seconds
         else:
@@ -109,7 +109,7 @@ def calculateEuclideanDistance(listOfLogsSorted):
 def determineLocation(listDistance, date):
     # Get the good all logs file
     date = date[:-1]
-    dateConverter = datetime.strptime(date, '%Y-%d-%mT%H:%M:%S')
+    dateConverter = datetime.strptime(date, '%Y-%m-%dT%H:%M:%S')
     dateOfTheDay = dateConverter.date().strftime("%d-%m-%Y")
     pathFile = ARCHIVE_LOG_PATH + dateOfTheDay + '/all_logs.csv'
     allLogsFileModel = salfm.SensorAllLogsFileModel(pathFile)
@@ -129,18 +129,57 @@ def determineLocation(listDistance, date):
     return result
 
 
-def test():
-    listOfLogsInTheGoodTimeRange = sortLogsInTheGoodTimeRange("A1:B5:R1:N1:B9", "2020-10-11T21:38:44Z")
+# Create a message to send in string format
+def displayLocation(listLocation):
+    # listLocation :
+    # Key and 0 => sensorIDLog
+    # 1 => Date log
+    # 2 => Mac address
+    # 3 => RSSI
+    # 4 => Room description
+    i = 0
+    response = ""
+    for sensor in listLocation:
+        room = listLocation[sensor][4]
+        if i == 0:
+            response = "The mac address " + listLocation[sensor][2] + " is in the " + room
+        elif i > 0:
+            response = response + ", near the " + room + " (" + str(listLocation[sensor][3]) + " db)"
+        i = i + 1
+    return response
+
+
+# Run RSSI Manager
+def run(macAddress, DateLog):
+    # List logs with the same mac address in 15 seconds range
+    listOfLogsInTheGoodTimeRange = sortLogsInTheGoodTimeRange(macAddress, DateLog)
+    if len(listOfLogsInTheGoodTimeRange) == 0:
+        return None
+    # Keep only logs that are in the good RSSI range (configured in sensor side)
     listLogsInTheGoodRssiRange = sortLogsInTheGoodRssiRange(listOfLogsInTheGoodTimeRange)
+    if len(listLogsInTheGoodRssiRange) == 0:
+        return None
+    # Calculate euclidean distance
     listDistance = calculateEuclideanDistance(listLogsInTheGoodRssiRange)
-    result = determineLocation(listDistance, "2020-10-11T21:38:44Z")
-    print(result)
-    return result
+    # Use euclidean distance to determine an approximate location
+    listLocation = determineLocation(listDistance, DateLog)
+    # Format the approximate location to human language
+    response = displayLocation(listLocation)
+    return response
 
 
-if __name__ == "__main__":
-    # execute only if run as a script
-    test()
+# def test():
+#     listOfLogsInTheGoodTimeRange = sortLogsInTheGoodTimeRange("A1:B5:R1:N1:B9", "2020-10-11T21:38:44Z")
+#     listLogsInTheGoodRssiRange = sortLogsInTheGoodRssiRange(listOfLogsInTheGoodTimeRange)
+#     listDistance = calculateEuclideanDistance(listLogsInTheGoodRssiRange)
+#     listLocation = determineLocation(listDistance, "2020-10-11T21:38:44Z")
+#     response = displayLocation(listLocation)
+#     return response
+
+
+# if __name__ == "__main__":
+#     # execute only if run as a script
+#     test()
 
 
 

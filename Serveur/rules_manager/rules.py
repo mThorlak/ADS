@@ -53,14 +53,16 @@ def runVaultRules(pathFile, linesToAnalyzed):
         macAddress = row[3]
         rssi = row[4]
         if isInBlackList(macAddress):
-            sendAlert("Black listed mac address " + macAddress + " is in vault " + logSensor.sensorName + " - date : " + date)
+            sendAlert("Black listed mac address " + macAddress + " is in vault " + logSensor.sensorName + " - date : "
+                      + date + ". More info here : 54.38.226.5:5000/locate/" + date + "/" + macAddress)
             print("Black listed mac address !")
         elif isInWhiteList(macAddress):
             print("Access authorized for mac address : " + macAddress)
             continue
         else:
             print("Mac address not known ! ")
-            sendAlert("Mac address not known : " + macAddress + " is in vault " + logSensor.sensorName + " - date : " + date)
+            sendAlert("Mac address not known : " + macAddress + " is in vault " + logSensor.sensorName + " - date : "
+                      + date + ". More info here : 54.38.226.5:5000/locate/" + date + "/" + macAddress)
 
 
 def runStrictRules(pathFile, linesToAnalyzed):
@@ -71,12 +73,14 @@ def runStrictRules(pathFile, linesToAnalyzed):
         macAddress = row[3]
         if isInBlackList(macAddress):
             print("Black listed mac address : " + macAddress + " !")
-            sendAlert("Black listed mac address " + macAddress + " is in strict sensor " + logSensor.sensorName + " - date : " + date)
+            sendAlert("Black listed mac address " + macAddress + " is in strict sensor " + logSensor.sensorName +
+                      " - date : " + date + ". More info here : 54.38.226.5:5000/locate/" + date + "/" + macAddress)
         elif isInWhiteList(macAddress):
             print("Access authorized for mac address : " + macAddress)
             continue
         else:
-            print("Mac address not known : " + macAddress + " is in strict sensor " + logSensor.sensorName + " - date : " + date)
+            print("Mac address not known : " + macAddress + " is in strict sensor " + logSensor.sensorName +
+                  " - date : " + date + ". More info here : 54.38.226.5:5000/locate/" + date + "/" + macAddress)
 
 
 # Send an alert to the mobile of the user
