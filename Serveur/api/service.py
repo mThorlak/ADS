@@ -40,6 +40,13 @@ def deleteFile(fileName):
         print("Error: %s : %s" % (fileName, e.strerror))
 
 
+# Create file
+def createFile(fileName):
+    try:
+        open(fileName, 'w').close()
+    except OSError as e:
+        print("Error: %s : %s" % (fileName, e.strerror))
+
 # Get all the logs from a specified date
 def getAllLogsByDate(date):
     pathFile = ARCHIVE_LOG_PATH + date + '/all_logs.csv'

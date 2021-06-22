@@ -1,3 +1,5 @@
+import csv
+
 import flask
 import re
 import logging.config
@@ -13,6 +15,7 @@ from Serveur.rules_manager import SensorConfigModel as scm
 from Serveur.rules_manager.list import listModel as bwl
 from Serveur.rules_manager import RssiManager as RssiManager
 from Serveur.sensor_manager.SensorModel import SensorModel
+from Serveur.rules_manager import VectorLocationModel as vlm
 
 app = flask.Flask(__name__)
 app.config["DEBUG"] = True
@@ -582,6 +585,43 @@ def locateDevice(date, mac_address):
             logger.error('Locate logs')
             logger.error(e)
             response = make_response(jsonify("Logs not found"), 400)
+            response.headers["Content-Type"] = "application/json"
+            return response
+
+
+# Receive configuration request from the installer
+@app.route('/initialisation', methods=['POST', 'DELETE'])
+def insertInitialisation():
+    if flask.request.method == 'POST':
+        request_data = flask.request.get_json()
+        date = request_data["Date"]
+        macAddress = request_data["Mac_Address"]
+        room = request_data["Room"]
+        try:
+            logger.info('Vector initialisation received')
+            RssiManager.learningLocation(date, macAddress, room)
+            response = make_response("Log inserted", 200)
+            response.headers["Content-Type"] = "application/json"
+            return response
+        except Exception as e:
+            logger.error('POST initialisation')
+            logger.error(e)
+            response = make_response(jsonify("Bad format request"), 400)
+            response.headers["Content-Type"] = "application/json"
+            return response
+
+    if flask.request.method == 'DELETE':
+        try:
+            logger.info('Flush vector_location.csv')
+            vectorLocationModel = vlm.VectorLocationModel()
+            vectorLocationModel.flushFile()
+            response = make_response("Vector location flushed", 204)
+            response.headers["Content-Type"] = "application/json"
+            return response
+        except Exception as e:
+            logger.error('POST initialisation')
+            logger.error(e)
+            response = make_response(jsonify("Bad format request"), 400)
             response.headers["Content-Type"] = "application/json"
             return response
 

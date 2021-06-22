@@ -3,6 +3,7 @@ from datetime import datetime
 import Serveur.api.service as service
 from Serveur.sensor_manager import SensorLogFileModel as slfm, ARCHIVE_LOG_PATH
 from Serveur.rules_manager import SensorConfigModel as scm
+from Serveur.rules_manager import VectorLocationModel as vlm
 from Serveur.sensor_manager import SensorAllLogsFileModel as salfm
 
 
@@ -15,7 +16,7 @@ def getRssiRange(pathFile):
     return resultSearch['Max_Range']
 
 
-# Sort that received signal from the specified mac_address during the last or next 15 seconds
+# Sort that received signal from the specified mac_address during the last 15 seconds
 # Return example : [['Test8-02', '2020-13-10T21:39:10Z', 'A1:B5:R1:N1:B9', -60],
 # ['Test3-01', '2020-13-10T21:38:20Z', 'A1:B5:R1:N1:B9', -40],
 # ['Test4-05', '2020-13-10T21:39:03Z', 'A1:B5:R1:N1:B9', -50]]
@@ -35,10 +36,12 @@ def sortLogsInTheGoodTimeRange(macAddress, date):
     # Check all the times and get the ones which are in the last 15 seconds
     i = 0
     storeIndex = []
+    # Keep only the ones equal or later than the date given in parameter
     while i < len(dateLogs):
         dateConverted = datetime.strptime(dateLogs[i], '%Y-%m-%dT%H:%M:%S')
         if dateConverted.time() < dateConverter.time():
-            timeSubtracted = (dateConverter - dateConverted).seconds
+            i = i + 1
+            continue
         else:
             timeSubtracted = (dateConverted - dateConverter).seconds
         # Collect only the logs similar in a 15 seconds range
@@ -147,6 +150,33 @@ def displayLocation(listLocation):
             response = response + ", near the " + room + " (" + str(listLocation[sensor][3]) + " db)"
         i = i + 1
     return response
+
+
+# Vector list manager
+# Return example : [['Test8-02', '2020-13-10T21:39:10Z', 'A1:B5:R1:N1:B9', -60],
+# ['Test3-01', '2020-13-10T21:38:20Z', 'A1:B5:R1:N1:B9', -40],
+# ['Test4-05', '2020-13-10T21:39:03Z', 'A1:B5:R1:N1:B9', -50]]
+def vectorListManager(room, logs):
+    vectorLocationModel = vlm.VectorLocationModel()
+    vectorIDToAdd = room
+    vectorContentToAdd = {}
+    sensorConfigFile = scm.SensorConfigModel()
+    listNameSensor = sensorConfigFile.content['Name'].values.tolist()
+    print(listNameSensor)
+    print(logs)
+    for log in logs:
+        for name in listNameSensor:
+            if name in str(log[0]).lower():
+                vectorContentToAdd[name] = log[3]
+
+    print(vectorContentToAdd)
+
+
+# Machine learning location device
+def learningLocation(date, macAddress, room):
+    # Get the logs concerning the mac address in the last 15 seconds
+    listLogs = sortLogsInTheGoodTimeRange(macAddress, date)
+    vectorListManager(room, listLogs)
 
 
 # Run RSSI Manager
