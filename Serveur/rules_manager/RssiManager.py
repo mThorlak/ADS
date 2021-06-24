@@ -1,5 +1,4 @@
 from datetime import datetime
-
 import Serveur.api.service as service
 from Serveur.sensor_manager import SensorLogFileModel as slfm, ARCHIVE_LOG_PATH
 from Serveur.rules_manager import SensorConfigModel as scm
@@ -20,7 +19,7 @@ def getRssiRange(pathFile):
 # Return example : [['Test8-02', '2020-13-10T21:39:10Z', 'A1:B5:R1:N1:B9', -60],
 # ['Test3-01', '2020-13-10T21:38:20Z', 'A1:B5:R1:N1:B9', -40],
 # ['Test4-05', '2020-13-10T21:39:03Z', 'A1:B5:R1:N1:B9', -50]]
-def sortLogsInTheGoodTimeRange(macAddress, date):
+def sortLogsInTheGoodTimeRange(macAddress, date, isInitialisation):
     date = date[:-1]
     dateConverter = datetime.strptime(date, '%Y-%m-%dT%H:%M:%S')
     # Get the date without the time for finding the good "all logs" file
@@ -39,11 +38,18 @@ def sortLogsInTheGoodTimeRange(macAddress, date):
     # Keep only the ones equal or later than the date given in parameter
     while i < len(dateLogs):
         dateConverted = datetime.strptime(dateLogs[i], '%Y-%m-%dT%H:%M:%S')
-        if dateConverted.time() < dateConverter.time():
-            i = i + 1
-            continue
+        if isInitialisation:
+            if dateConverted.time() < dateConverter.time():
+                i = i + 1
+                continue
+            else:
+                timeSubtracted = (dateConverted - dateConverter).seconds
+        # If not an initialisation by the installer, we check logs in the before and after 15 seconds
         else:
-            timeSubtracted = (dateConverted - dateConverter).seconds
+            if dateConverted.time() < dateConverter.time():
+                timeSubtracted = (dateConverter - dateConverted).seconds
+            else:
+                timeSubtracted = (dateConverted - dateConverter).seconds
         # Collect only the logs similar in a 15 seconds range
         if timeSubtracted <= 15:
             storeIndex.append(i)
@@ -75,6 +81,36 @@ def sortLogsInTheGoodRssiRange(listOfLogsInTheGoodTimeRange):
                     listSortedWithGoodRssiRange.append(listOfLogsInTheGoodTimeRange[i])
         i = i + 1
     return listSortedWithGoodRssiRange
+
+
+# Delete duplicate log and change for example Salon-01 to Salon
+# Result example :
+# [['Test2', '2020-12-10T20:38:40Z', 'A1:B5:R1:N1:B9', -1], ['Test8', '2020-12-10T20:38:50Z', 'A1:B5:R1:N1:B9', -4]]
+def deleteDuplicateLogAndGetRoomName(listOfLogs):
+    logsRoomNameFormatted = []
+    sensorConfigModel = scm.SensorConfigModel()
+    for log in listOfLogs:
+        for sensorConfigName in sensorConfigModel.content["Name"].values:
+            if str(sensorConfigName).capitalize() in log[0]:
+                log[0] = str(sensorConfigName).capitalize()
+                logsRoomNameFormatted.append(log)
+    if len(logsRoomNameFormatted) <= 1:
+        return logsRoomNameFormatted
+    else:
+        logsWithoutDuplicate = []
+        for log in logsRoomNameFormatted:
+            isDuplicate = False
+            i = 0
+            if len(logsWithoutDuplicate) == 0:
+                logsWithoutDuplicate.append(log)
+                continue
+            while i < len(logsWithoutDuplicate):
+                if log[0] in logsWithoutDuplicate[i][0]:
+                    isDuplicate = True
+                i = i + 1
+            if not isDuplicate:
+                logsWithoutDuplicate.append(log)
+        return logsWithoutDuplicate
 
 
 # Get all sensors that received signal from the specified mac_address at the same time,
@@ -152,50 +188,55 @@ def displayLocation(listLocation):
     return response
 
 
-# Vector list manager
-# Return example : [['Test8-02', '2020-13-10T21:39:10Z', 'A1:B5:R1:N1:B9', -60],
-# ['Test3-01', '2020-13-10T21:38:20Z', 'A1:B5:R1:N1:B9', -40],
-# ['Test4-05', '2020-13-10T21:39:03Z', 'A1:B5:R1:N1:B9', -50]]
-def vectorListManager(room, logs):
+# Insert vector in vector_location.csv
+# Format example in csv file: Salon;{'test2': -60, 'test8': -80}
+def insertVectorInVectorLocation(room, logs):
     vectorLocationModel = vlm.VectorLocationModel()
     vectorIDToAdd = room
     vectorContentToAdd = {}
     sensorConfigFile = scm.SensorConfigModel()
     listNameSensor = sensorConfigFile.content['Name'].values.tolist()
-    print(listNameSensor)
-    print(logs)
     for log in logs:
         for name in listNameSensor:
             if name in str(log[0]).lower():
                 vectorContentToAdd[name] = log[3]
+    vectorLocationModel.insertValue(vectorIDToAdd, str(vectorContentToAdd))
+    test = vectorLocationModel.getVectorsForRoom("Salon")
 
-    print(vectorContentToAdd)
 
-
-# Machine learning location device
-def learningLocation(date, macAddress, room):
-    # Get the logs concerning the mac address in the last 15 seconds
-    listLogs = sortLogsInTheGoodTimeRange(macAddress, date)
-    vectorListManager(room, listLogs)
+# Get list of the vectors corresponding to the one  given
+def compareEuclideanDistanceVector(vectorToCompare):
+    vectorLocationModel = vlm.VectorLocationModel()
+    dictionaryVectors = vectorLocationModel.getContentDictionaryFormat()
+    print("################## Dictionary vector ##################")
+    print(dictionaryVectors[0]["Room"])
+    print(dictionaryVectors[0]["Content"])
+    print(dictionaryVectors[0]["Content"]["test2"])
 
 
 # Run RSSI Manager
 def run(macAddress, DateLog):
     # List logs with the same mac address in 15 seconds range
-    listOfLogsInTheGoodTimeRange = sortLogsInTheGoodTimeRange(macAddress, DateLog)
+    listOfLogsInTheGoodTimeRange = sortLogsInTheGoodTimeRange(macAddress, DateLog, False)
+    print("################## List in the good time range ##################")
+    print(listOfLogsInTheGoodTimeRange)
     if len(listOfLogsInTheGoodTimeRange) == 0:
         return None
+    print("################## List of logs cleaned (without duplicate and with good room name ##################")
+    listOfLogsCleaned = deleteDuplicateLogAndGetRoomName(listOfLogsInTheGoodTimeRange)
+    print(listOfLogsCleaned)
+    compareEuclideanDistanceVector(listOfLogsCleaned)
     # Keep only logs that are in the good RSSI range (configured in sensor side)
-    listLogsInTheGoodRssiRange = sortLogsInTheGoodRssiRange(listOfLogsInTheGoodTimeRange)
-    if len(listLogsInTheGoodRssiRange) == 0:
-        return None
+    # listLogsInTheGoodRssiRange = sortLogsInTheGoodRssiRange(listOfLogsInTheGoodTimeRange)
+    # if len(listLogsInTheGoodRssiRange) == 0:
+    #     return None
     # Calculate euclidean distance
-    listDistance = calculateEuclideanDistance(listLogsInTheGoodRssiRange)
+    # listDistance = calculateEuclideanDistance(listLogsInTheGoodRssiRange)
     # Use euclidean distance to determine an approximate location
-    listLocation = determineLocation(listDistance, DateLog)
+    # listLocation = determineLocation(listDistance, DateLog)
     # Format the approximate location to human language
-    response = displayLocation(listLocation)
-    return response
+    # response = displayLocation(listLocation)
+    # return response
 
 
 # def test():
@@ -210,6 +251,3 @@ def run(macAddress, DateLog):
 # if __name__ == "__main__":
 #     # execute only if run as a script
 #     test()
-
-
-
