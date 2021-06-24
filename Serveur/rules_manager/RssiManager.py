@@ -4,6 +4,7 @@ from Serveur.sensor_manager import SensorLogFileModel as slfm, ARCHIVE_LOG_PATH
 from Serveur.rules_manager import SensorConfigModel as scm
 from Serveur.rules_manager import VectorLocationModel as vlm
 from Serveur.sensor_manager import SensorAllLogsFileModel as salfm
+from scipy.spatial import distance
 
 
 # Get RSSI range of a specified config sensor
@@ -204,27 +205,83 @@ def insertVectorInVectorLocation(room, logs):
     test = vectorLocationModel.getVectorsForRoom("Salon")
 
 
-# Get list of the vectors corresponding to the one  given
-def compareEuclideanDistanceVector(vectorToCompare):
+# Convert the log list into dictionary vector
+def convertLogListIntoDictionaryVector(logList):
+    result = {}
+    # log[0] = room name
+    # log[3] = RSSI
+    for log in logList:
+        result[str(log[0]).lower()] = log[3]
+    return result
+
+
+# Return list with all euclidean distance calculated between the vector given and the vector list
+# Result example
+# {
+# 0: {'Room': 'Salon', 'Distance': 96.63332758422428},
+# 1: {'Room': 'jhedhze', 'Distance': 96.63332758422428},
+# 2: {'Room': 'Cac', 'Distance': 77.31752712031083}
+# }
+def compareEuclideanDistanceVector(vectorsToCompare):
+    vectorsToCompare = convertLogListIntoDictionaryVector(vectorsToCompare)
     vectorLocationModel = vlm.VectorLocationModel()
     dictionaryVectors = vectorLocationModel.getContentDictionaryFormat()
-    print("################## Dictionary vector ##################")
-    print(dictionaryVectors[0]["Room"])
-    print(dictionaryVectors[0]["Content"])
-    print(dictionaryVectors[0]["Content"]["test2"])
+    listKeysVectorToCompare = list(vectorsToCompare.keys())
+    dictionaryEuclideanDistance = {}
+    # Check if the keys are the same before euclidean calculus
+    i = 0
+    while i < len(dictionaryVectors):
+        listKeysDictionaryVector = list(dictionaryVectors[i]["Content"].keys())
+        isSameVector = set(listKeysDictionaryVector) == set(listKeysVectorToCompare)
+        # Already the same vectors => euclidean calculus
+        if isSameVector:
+            vectorA = []
+            vectorB = []
+            for key in listKeysVectorToCompare:
+                vectorA.append(vectorsToCompare[key])
+                vectorB.append(dictionaryVectors[i]["Content"][key])
+            dictionaryEuclideanDistance[i] = {
+                'Room': dictionaryVectors[i]["Room"],
+                'Distance': euclideanDistanceCalculus(vectorA, vectorB)
+            }
+        # Need to uniformize the vectors first
+        else:
+            for key in listKeysVectorToCompare:
+                if key not in listKeysDictionaryVector:
+                    dictionaryVectors[i]["Content"][key] = 0
+            for key in listKeysDictionaryVector:
+                if key not in listKeysVectorToCompare:
+                    vectorsToCompare[key] = 0
+            # Update list keys
+            listKeysDictionaryVector = list(dictionaryVectors[i]["Content"].keys())
+            isSameVector = set(listKeysDictionaryVector) == set(listKeysVectorToCompare)
+            # Same vectors => euclidean calculus
+            vectorA = []
+            vectorB = []
+            for key in listKeysVectorToCompare:
+                vectorA.append(vectorsToCompare[key])
+                vectorB.append(dictionaryVectors[i]["Content"][key])
+            dictionaryEuclideanDistance[i] = {
+                'Room': dictionaryVectors[i]["Room"],
+                'Distance': euclideanDistanceCalculus(vectorA, vectorB)
+            }
+        i = i + 1
+    return dictionaryEuclideanDistance
+
+
+# Euclidean distance calculus
+def euclideanDistanceCalculus(vectorA, vectorB):
+    result = distance.euclidean(vectorA, vectorB)
+    return result
 
 
 # Run RSSI Manager
 def run(macAddress, DateLog):
     # List logs with the same mac address in 15 seconds range
     listOfLogsInTheGoodTimeRange = sortLogsInTheGoodTimeRange(macAddress, DateLog, False)
-    print("################## List in the good time range ##################")
-    print(listOfLogsInTheGoodTimeRange)
     if len(listOfLogsInTheGoodTimeRange) == 0:
         return None
-    print("################## List of logs cleaned (without duplicate and with good room name ##################")
     listOfLogsCleaned = deleteDuplicateLogAndGetRoomName(listOfLogsInTheGoodTimeRange)
-    print(listOfLogsCleaned)
     compareEuclideanDistanceVector(listOfLogsCleaned)
     # Keep only logs that are in the good RSSI range (configured in sensor side)
     # listLogsInTheGoodRssiRange = sortLogsInTheGoodRssiRange(listOfLogsInTheGoodTimeRange)
