@@ -251,7 +251,7 @@ def compareEuclideanDistanceVector(vectorsToCompare):
             }
         i = i + 1
     # Keep the best euclidean distance (the lower value)
-    lowestDistance = {}
+    lowestDistance = dictionaryEuclideanDistance[0]
     lowestDistanceValue = dictionaryEuclideanDistance[0]['Distance']
     i = 0
     while i < len(dictionaryEuclideanDistance):
@@ -277,12 +277,19 @@ def learningLocation(date, macAddress, room):
 # Run RSSI Manager
 def run(macAddress, DateLog):
     # List logs with the same mac address in 15 seconds range
+    print("################### List mac address found.... ###################")
     listOfLogsInTheGoodTimeRange = sortLogsInTheGoodTimeRange(macAddress, DateLog, False)
+    print(listOfLogsInTheGoodTimeRange)
     if len(listOfLogsInTheGoodTimeRange) == 0:
         return None
+    print("################### Clean duplicates and reformat logs.... ###################")
     listOfLogsCleaned = deleteDuplicateLogAndGetRoomName(listOfLogsInTheGoodTimeRange)
+    print(listOfLogsCleaned)
+    print("################### Locate log given .... ###################")
     result = compareEuclideanDistanceVector(listOfLogsCleaned)
+    print(result)
     messageToDisplay = displayLocation(macAddress, DateLog, result)
+    print(messageToDisplay)
     return messageToDisplay
 
     # Keep only logs that are in the good RSSI range (configured in sensor side)

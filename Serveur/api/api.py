@@ -1,5 +1,3 @@
-import csv
-
 import flask
 import re
 import logging.config
@@ -590,8 +588,24 @@ def locateDevice(date, mac_address):
 
 
 # Receive configuration request from the installer
-@app.route('/initialisation', methods=['POST', 'DELETE'])
+@app.route('/initialisation', methods=['GET', 'POST', 'DELETE'])
 def insertInitialisation():
+    if flask.request.method == 'GET':
+        try:
+            logger.info('Displaying vectors...')
+            vectorLocationModel = vlm.VectorLocationModel()
+            logger.info(vectorLocationModel.getProperty())
+            result = vectorLocationModel.content.to_json(orient='records')
+            response = make_response(result, 200)
+            response.headers["Content-Type"] = "application/json"
+            return response
+        except Exception as e:
+            logger.error('Error displaying vectors')
+            logger.error(e)
+            response = make_response(jsonify("Logs not found"), 400)
+            response.headers["Content-Type"] = "application/json"
+            return response
+
     if flask.request.method == 'POST':
         request_data = flask.request.get_json()
         date = request_data["Date"]
