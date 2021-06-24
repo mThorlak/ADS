@@ -136,8 +136,8 @@ def calculateEuclideanDistance(listOfLogsSorted):
         if i == indexOfBestRSSI:
             i = i + 1
             continue
-        distance = (listOfLogsSorted[i][3] * -1) - 1
-        listDistance[listOfLogsSorted[i][0]] = distance
+        distanceEuclidean = (listOfLogsSorted[i][3] * -1) - 1
+        listDistance[listOfLogsSorted[i][0]] = distanceEuclidean
         i = i + 1
     return listDistance
 
@@ -170,23 +170,9 @@ def determineLocation(listDistance, date):
 
 
 # Create a message to send in string format
-def displayLocation(listLocation):
-    # listLocation :
-    # Key and 0 => sensorIDLog
-    # 1 => Date log
-    # 2 => Mac address
-    # 3 => RSSI
-    # 4 => Room description
-    i = 0
-    response = ""
-    for sensor in listLocation:
-        room = listLocation[sensor][4]
-        if i == 0:
-            response = "The mac address " + listLocation[sensor][2] + " is in the " + room
-        elif i > 0:
-            response = response + ", near the " + room + " (" + str(listLocation[sensor][3]) + " db)"
-        i = i + 1
-    return response
+def displayLocation(macAddress, date, listLocation):
+    # {'Room': 'Salon', 'Distance': 11.224972160321824}
+    return "The mac address " + macAddress + " recorded at  " + date + " is in the " + listLocation["Room"] + "."
 
 
 # Insert vector in vector_location.csv
@@ -202,7 +188,6 @@ def insertVectorInVectorLocation(room, logs):
             if name in str(log[0]).lower():
                 vectorContentToAdd[name] = log[3]
     vectorLocationModel.insertValue(vectorIDToAdd, str(vectorContentToAdd))
-    test = vectorLocationModel.getVectorsForRoom("Salon")
 
 
 # Convert the log list into dictionary vector
@@ -253,8 +238,7 @@ def compareEuclideanDistanceVector(vectorsToCompare):
                 if key not in listKeysVectorToCompare:
                     vectorsToCompare[key] = 0
             # Update list keys
-            listKeysDictionaryVector = list(dictionaryVectors[i]["Content"].keys())
-            isSameVector = set(listKeysDictionaryVector) == set(listKeysVectorToCompare)
+            listKeysVectorToCompare = list(vectorsToCompare.keys())
             # Same vectors => euclidean calculus
             vectorA = []
             vectorB = []
@@ -266,13 +250,28 @@ def compareEuclideanDistanceVector(vectorsToCompare):
                 'Distance': euclideanDistanceCalculus(vectorA, vectorB)
             }
         i = i + 1
-    return dictionaryEuclideanDistance
+    # Keep the best euclidean distance (the lower value)
+    lowestDistance = {}
+    lowestDistanceValue = dictionaryEuclideanDistance[0]['Distance']
+    i = 0
+    while i < len(dictionaryEuclideanDistance):
+        if dictionaryEuclideanDistance[i]['Distance'] < lowestDistanceValue:
+            lowestDistance = dictionaryEuclideanDistance[i]
+            lowestDistanceValue = dictionaryEuclideanDistance[i]['Distance']
+        i = i + 1
+    return lowestDistance
 
 
 # Euclidean distance calculus
 def euclideanDistanceCalculus(vectorA, vectorB):
     result = distance.euclidean(vectorA, vectorB)
     return result
+
+
+def learningLocation(date, macAddress, room):
+    # Get the logs concerning the mac address in the last 15 seconds
+    listLogs = sortLogsInTheGoodTimeRange(macAddress, date, True)
+    insertVectorInVectorLocation(room, listLogs)
 
 
 # Run RSSI Manager
@@ -282,7 +281,10 @@ def run(macAddress, DateLog):
     if len(listOfLogsInTheGoodTimeRange) == 0:
         return None
     listOfLogsCleaned = deleteDuplicateLogAndGetRoomName(listOfLogsInTheGoodTimeRange)
-    compareEuclideanDistanceVector(listOfLogsCleaned)
+    result = compareEuclideanDistanceVector(listOfLogsCleaned)
+    messageToDisplay = displayLocation(macAddress, DateLog, result)
+    return messageToDisplay
+
     # Keep only logs that are in the good RSSI range (configured in sensor side)
     # listLogsInTheGoodRssiRange = sortLogsInTheGoodRssiRange(listOfLogsInTheGoodTimeRange)
     # if len(listLogsInTheGoodRssiRange) == 0:
