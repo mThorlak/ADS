@@ -11,6 +11,7 @@ pip install Flask
 pip install pandas
 pip install numpy
 pip install twilio
+pip install scipy
 ```
 
 ### How to use it 

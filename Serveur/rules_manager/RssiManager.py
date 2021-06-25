@@ -36,15 +36,15 @@ def sortLogsInTheGoodTimeRange(macAddress, date, isInitialisation):
     # Check all the times and get the ones which are in the last 15 seconds
     i = 0
     storeIndex = []
-    # Keep only the ones equal or later than the date given in parameter
+    # Keep only the ones equal or before than the date given in parameter
     while i < len(dateLogs):
         dateConverted = datetime.strptime(dateLogs[i], '%Y-%m-%dT%H:%M:%S')
         if isInitialisation:
             if dateConverted.time() < dateConverter.time():
+                timeSubtracted = (dateConverter - dateConverted).seconds
+            else:
                 i = i + 1
                 continue
-            else:
-                timeSubtracted = (dateConverted - dateConverter).seconds
         # If not an initialisation by the installer, we check logs in the before and after 15 seconds
         else:
             if dateConverted.time() < dateConverter.time():
