@@ -25,7 +25,7 @@ def runLogReceptionManager(pathFile):
     print("Log file + " + logToAnalyse.fileName + " registered and archived")
     ### Step 4 ###
     print(" ############## Step 4 ##############")
-    rules.run(logToAnalyse.pathFile, logToAnalyse)
+    rules.run(logToAnalyse.pathFile, logToAnalyse.content)
     print("Rules has been processed")
     ### Step 5 ###
     print(" ############## Step 5 ##############")
@@ -58,16 +58,8 @@ def insertIntoBigDataLogFile(logFileModel):
         logFileModel.content.to_csv(ARCHIVE_LOG_PATH + logFileModel.dateLog + '/all_logs.csv', index=False)
     except Exception:
         # File already exists
-        logSensorToCompare = logFileModel.content
-        bigDataLogToCompare = pd.read_csv(ARCHIVE_LOG_PATH + logFileModel.dateLog + '/all_logs.csv')
-        logsToAdd = logSensorToCompare.merge(bigDataLogToCompare, how='left', indicator=True).loc[
-            lambda x: x['_merge'] == 'left_only']
-        header = ['ID', 'Date', 'Mac_Address', 'RSSI']
-        # Reindex for deleting _merge columns
-        logsToAdd.reindex(header)
-        print(logsToAdd)
-        logsToAdd.to_csv(ARCHIVE_LOG_PATH + logFileModel.dateLog + '/all_logs.csv', mode='a', header=False,
-                         index=False, columns=header)
+        logFileModel.content.to_csv(ARCHIVE_LOG_PATH + logFileModel.dateLog + '/all_logs.csv', mode='a', index=False,
+                                    header=False)
 
 
 # Delete file given in parameter

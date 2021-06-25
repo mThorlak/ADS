@@ -89,9 +89,9 @@ def sendAlert(content):
     sendSms.sendMessage(content)
 
 
-# TODO : get a better management rules
 # run the rule manager
 def run(pathFile, linesToAnalyzed):
+    print(linesToAnalyzed)
     # 1 => Check if the file received is a priority
     priority = getPriority(pathFile)
     # 2 -> Check the location
